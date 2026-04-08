@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.astro/
+.DS_Store
+*.local
+
+# Proprietary fonts - cannot be used on web
+finale-broadwaycopyist/
+finale-jazz/

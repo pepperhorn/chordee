@@ -1,0 +1,9 @@
+---
+import Layout from "../layouts/Layout.astro"
+import "../styles/globals.css"
+import { ChordChartEditor } from "../components/chord-chart/ChordChartEditor"
+---
+
+<Layout title="Chord Charts">
+  <ChordChartEditor client:only="react" />
+</Layout>

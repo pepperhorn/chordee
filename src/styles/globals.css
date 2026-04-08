@@ -1,0 +1,186 @@
+@import url('https://fonts.googleapis.com/css2?family=Monoton&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 47.4% 11.2%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+
+    /* Chart-specific */
+    --chart-background: 0 0% 100%;
+    --chart-foreground: 222.2 47.4% 11.2%;
+    --chart-primary: 221.2 83.2% 53.3%;
+    --chart-muted: 215.4 16.3% 46.9%;
+    --chart-border: 214.3 31.8% 91.4%;
+    --chart-ring: 221.2 83.2% 53.3%;
+    --chart-accent: 210 40% 96.1%;
+  }
+
+  [data-theme="dark"] {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+
+    --chart-background: 222.2 84% 4.9%;
+    --chart-foreground: 210 40% 98%;
+    --chart-primary: 217.2 91.2% 59.8%;
+    --chart-muted: 215 20.2% 65.1%;
+    --chart-border: 217.2 32.6% 17.5%;
+    --chart-ring: 224.3 76.3% 48%;
+    --chart-accent: 217.2 32.6% 17.5%;
+  }
+
+  [data-theme="high-contrast"] {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 0%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 0%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 60 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 30%;
+    --input: 0 0% 30%;
+    --ring: 60 100% 50%;
+
+    --chart-background: 0 0% 0%;
+    --chart-foreground: 0 0% 100%;
+    --chart-primary: 60 100% 50%;
+    --chart-muted: 0 0% 70%;
+    --chart-border: 0 0% 30%;
+    --chart-ring: 60 100% 50%;
+    --chart-accent: 0 0% 15%;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+}
+
+/* ── Font faces ─────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: "Petaluma";
+  src: url("/fonts/Petaluma.woff2") format("woff2");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "PetalumaScript";
+  src: url("/fonts/PetalumaScript.woff2") format("woff2");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "PetalumaText";
+  src: url("/fonts/PetalumaText.woff2") format("woff2");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bravura";
+  src: url("/fonts/Bravura.woff2") format("woff2");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "BravuraText";
+  src: url("/fonts/BravuraText.woff2") format("woff2");
+  font-display: swap;
+}
+
+/* ── Accessibility ──────────────────────────────────────────────────── */
+
+.chord-chart-skip-link {
+  position: absolute;
+  left: -9999px;
+  z-index: 100;
+}
+
+.chord-chart-skip-link:focus {
+  left: 0;
+  top: 0;
+  padding: 0.5rem 1rem;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Print ──────────────────────────────────────────────────────────── */
+
+@media print {
+  [role="toolbar"],
+  [role="complementary"] {
+    display: none !important;
+  }
+
+  .chart-container {
+    background: white !important;
+  }
+
+  .paper-overlay {
+    display: none !important;
+  }
+}
