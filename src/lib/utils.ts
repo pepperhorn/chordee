@@ -102,6 +102,8 @@ export function createEmptyChart(): ChordChart {
       clefDisplay: "start",
       showClef: false,
       showKeySignature: true,
+      copyright: "",
+      footerText: "",
     },
     sections: [createSection("Intro")],
   }

@@ -8,10 +8,15 @@ import { TimeSigPicker } from "./TimeSigPicker"
 import { KeySigPicker } from "./KeySigPicker"
 import { getPaperOverlayStyle } from "@/lib/paperTexture"
 import { useChartStore } from "@/lib/store"
+import { pickBrandTagline } from "@/lib/brandTaglines"
+import { AboutDialog } from "@/components/about/AboutDialog"
+import { Info } from "lucide-react"
 
 export function ChartContainer() {
   const [containerWidth, setContainerWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [brandTagline] = useState(() => pickBrandTagline())
+  const [aboutOpen, setAboutOpen] = useState(false)
   const zoom = useChartStore((s) => s.ui.zoom)
   const theme = useChartStore((s) => s.ui.theme)
   const activeInput = useChartStore((s) => s.ui.activeInput)
@@ -94,6 +99,56 @@ export function ChartContainer() {
           }}
         />
       )}
+      {/* About / credits button — desktop only, sticky bottom-left of the chart viewport */}
+      <div
+        className="chart-about-sticky pointer-events-none sticky bottom-0 left-0 z-20 flex max-md:hidden"
+        style={{ marginTop: "-64px", paddingBottom: "30px", paddingLeft: "16px", height: 0 }}
+      >
+        <button
+          type="button"
+          className="chart-about-btn pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background/80 text-muted-foreground shadow-sm backdrop-blur-sm hover:bg-background hover:text-foreground"
+          onClick={() => setAboutOpen(true)}
+          aria-label="About chordee"
+          title="About chordee"
+          style={{ marginTop: "14px" }}
+        >
+          <Info className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Floating brand footer — desktop only, sticky to the bottom of the chart
+          scroll viewport so it tracks the chart area as the sidebar opens/closes
+          and stays in shot when scrolling. Mirrors the chart heading treatment. */}
+      <div
+        className="chart-brand-footer pointer-events-none sticky bottom-0 left-0 z-20 flex items-center justify-center gap-2 max-md:hidden"
+        style={{ marginTop: "-64px", paddingBottom: "30px", width: "100%" }}
+        aria-hidden="true"
+      >
+        <img
+          src="/CHORDEE.png"
+          alt="chordee"
+          className="chart-brand-logo block select-none"
+          style={{
+            height: "18px",
+            width: "auto",
+            filter: "drop-shadow(0 0 6px rgba(255,255,255,0.7)) drop-shadow(0 0 2px rgba(255,255,255,0.5))",
+          }}
+          draggable={false}
+        />
+        <span
+          className="chart-brand-tag inline-flex items-center text-foreground leading-none"
+          style={{
+            fontFamily: "PetalumaScript, serif",
+            fontSize: "14px",
+            opacity: 0.6,
+            textShadow: "0 0 6px rgba(255,255,255,0.7), 0 0 2px rgba(255,255,255,0.5)",
+          }}
+        >
+          {brandTagline}
+        </span>
+      </div>
+
+      <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
     </div>
   )
 }

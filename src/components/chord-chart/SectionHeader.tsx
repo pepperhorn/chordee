@@ -12,6 +12,7 @@ const BASE_REHEARSAL_FONT_SIZE = 13
 export function SectionHeader({ header }: SectionHeaderProps) {
   const rehearsalFont = useChartStore((s) => s.ui.fontConfig.rehearsal)
   const rehearsalSize = useChartStore((s) => s.ui.fontConfig.rehearsalSize)
+  const rehearsalColor = useChartStore((s) => s.ui.fontConfig.rehearsalColor)
   const setSelection = useChartStore((s) => s.setSelection)
   const selection = useChartStore((s) => s.ui.selection)
 
@@ -74,7 +75,7 @@ export function SectionHeader({ header }: SectionHeaderProps) {
             fontSize={rehearsalFontSize}
             fontWeight={700}
             fontFamily={`${rehearsalFont}, serif`}
-            fill="currentColor"
+            fill={rehearsalColor ?? "currentColor"}
           >
             {header.rehearsalMark}
           </text>
@@ -89,7 +90,7 @@ export function SectionHeader({ header }: SectionHeaderProps) {
         fontSize={sectionFontSize}
         fontWeight={700}
         fontFamily={`${rehearsalFont}, serif`}
-        fill="currentColor"
+        fill={rehearsalColor ?? "currentColor"}
       >
         {header.text}
       </text>
@@ -105,7 +106,7 @@ export function SectionHeader({ header }: SectionHeaderProps) {
           fontSize={Math.round(12 * scale)}
           fontStyle="italic"
           fontFamily={`${rehearsalFont}, serif`}
-          fill="currentColor"
+          fill={rehearsalColor ?? "currentColor"}
           opacity={0.6}
         >
           {formatNavigation(header.navigation)}

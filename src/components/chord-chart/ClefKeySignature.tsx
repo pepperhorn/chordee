@@ -32,6 +32,7 @@ export function ClefKeySignature({
 }: ClefKeySignatureProps) {
   const clefFont = useChartStore((s) => s.ui.fontConfig.clef)
   const clefSize = useChartStore((s) => s.ui.fontConfig.clefSize)
+  const clefColor = useChartStore((s) => s.ui.fontConfig.clefColor)
 
   if (!showClef && !showKeySig) return null
 
@@ -88,7 +89,7 @@ export function ClefKeySignature({
           y={clefRefY}
           fontSize={fontSize}
           fontFamily={`${clefFont}, Petaluma, Bravura, serif`}
-          fill="currentColor"
+          fill={clefColor ?? "currentColor"}
         >
           {glyph.char}
         </text>

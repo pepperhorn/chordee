@@ -1,19 +1,38 @@
 import { useMemo } from "react"
 import { useChartStore } from "./store"
 import { computeLayout } from "./layout/engine"
-import { buildFontStrings, RELATIVE_SIZE_SCALE } from "./fonts"
+import { buildFontStrings, RELATIVE_SIZE_SCALE, type FontConfig } from "./fonts"
 import { estimateClefKeySigWidth } from "./keySignature"
 import { DEFAULT_SPACING, DEFAULT_FONT_SIZES } from "./layout/constants"
 import type { LayoutConfig, LayoutResult } from "./layout/types"
 
 const BASE_LINE_GAP = 8
 
-export function useChartLayout(containerWidth: number): LayoutResult | null {
+export interface LayoutOverrides {
+  containerWidth?: number
+  measuresPerLine?: number | "auto"
+  justification?: "proportional" | "equal"
+  fontConfigOverride?: Partial<FontConfig>
+}
+
+export function useChartLayout(
+  containerWidth: number,
+  overrides?: LayoutOverrides,
+): LayoutResult | null {
   const chart = useChartStore((s) => s.chart)
-  const fontConfig = useChartStore((s) => s.ui.fontConfig)
-  const justification = useChartStore((s) => s.ui.justificationStrategy)
+  const storeFontConfig = useChartStore((s) => s.ui.fontConfig)
+  const storeJustification = useChartStore((s) => s.ui.justificationStrategy)
   const measuresPerLineMode = useChartStore((s) => s.ui.measuresPerLineMode)
-  const measuresPerLine = useChartStore((s) => s.chart.meta.measuresPerLine)
+  const storeMeasuresPerLine = useChartStore((s) => s.chart.meta.measuresPerLine)
+
+  const fontConfig: FontConfig = overrides?.fontConfigOverride
+    ? { ...storeFontConfig, ...overrides.fontConfigOverride }
+    : storeFontConfig
+  const effectiveContainerWidth = overrides?.containerWidth ?? containerWidth
+  const justification = overrides?.justification ?? storeJustification
+  const measuresPerLine =
+    overrides?.measuresPerLine ??
+    (measuresPerLineMode === "auto" ? "auto" : storeMeasuresPerLine)
 
   const clef = useChartStore((s) => s.chart.meta.clef)
   const showClef = useChartStore((s) => s.chart.meta.showClef ?? true)
@@ -22,7 +41,7 @@ export function useChartLayout(containerWidth: number): LayoutResult | null {
   const showKeySig = useChartStore((s) => s.chart.meta.showKeySignature ?? false)
 
   return useMemo(() => {
-    if (containerWidth <= 0) return null
+    if (effectiveContainerWidth <= 0) return null
 
     // Scale spacing based on font size settings to avoid collisions
     const chordScale = RELATIVE_SIZE_SCALE[fontConfig.chordSize] ?? 1
@@ -59,12 +78,12 @@ export function useChartLayout(containerWidth: number): LayoutResult | null {
         : 0
 
     // Reduce padding on narrow screens (mobile)
-    const isMobile = containerWidth < 600
+    const isMobile = effectiveContainerWidth < 600
     const chartPaddingX = isMobile ? 12 : DEFAULT_SPACING.chartPaddingX
     const chartPaddingY = isMobile ? 16 : DEFAULT_SPACING.chartPaddingY
 
     const config: LayoutConfig = {
-      containerWidth,
+      containerWidth: effectiveContainerWidth,
       fonts: buildFontStrings(fontConfig, DEFAULT_FONT_SIZES),
       spacing: {
         ...DEFAULT_SPACING,
@@ -80,10 +99,10 @@ export function useChartLayout(containerWidth: number): LayoutResult | null {
         clefKeySigWidth,
       },
       justification,
-      measuresPerLine: measuresPerLineMode === "auto" ? "auto" : measuresPerLine,
+      measuresPerLine,
       clefDisplay,
     }
 
     return computeLayout(chart, config)
-  }, [chart, containerWidth, fontConfig, justification, measuresPerLineMode, measuresPerLine, clef, showClef, showKeySig, clefDisplay, chartKey])
+  }, [chart, effectiveContainerWidth, fontConfig, justification, measuresPerLine, clef, showClef, showKeySig, clefDisplay, chartKey])
 }

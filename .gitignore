@@ -7,3 +7,4 @@ dist/
 # Proprietary fonts - cannot be used on web
 finale-broadwaycopyist/
 finale-jazz/
+.gstack/

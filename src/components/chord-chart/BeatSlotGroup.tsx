@@ -39,9 +39,12 @@ export function BeatSlotGroup({
   const setSelection = useChartStore((s) => s.setSelection)
   const lyricSize = useChartStore((s) => s.ui.fontConfig.lyricSize)
   const lyricFont = useChartStore((s) => s.ui.fontConfig.lyric)
+  const lyricColor = useChartStore((s) => s.ui.fontConfig.lyricColor)
   const dynamicSize = useChartStore((s) => s.ui.fontConfig.dynamicSize)
   const dynamicFont = useChartStore((s) => s.ui.fontConfig.dynamic)
+  const dynamicColor = useChartStore((s) => s.ui.fontConfig.dynamicColor)
   const chordSize = useChartStore((s) => s.ui.fontConfig.chordSize)
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768
   const isBeatSelected = selection?.beatId === beat.beatId
   const isBeamed = BEAMED_DIVISIONS.has(beat.division)
   const chordScale = RELATIVE_SIZE_SCALE[chordSize] ?? 1
@@ -137,8 +140,8 @@ export function BeatSlotGroup({
               />
             )}
 
-            {/* Chord symbol — hidden when inline input is active on this slot */}
-            {slot.chord && !(isSlotSelected && editMode === "chord") && (
+            {/* Chord symbol — hidden when inline input is active on this slot (desktop only) */}
+            {slot.chord && !(isSlotSelected && editMode === "chord" && !isMobile) && (
               <ChordSymbol
                 text={slot.chord.displayText}
                 x={slot.width / 2}
@@ -201,7 +204,7 @@ export function BeatSlotGroup({
           y={beat.lyric.y}
           fontSize={Math.round(13 * lyricScale)}
           fontFamily={`${lyricFont}, sans-serif`}
-          fill="currentColor"
+          fill={lyricColor ?? "currentColor"}
           opacity={0.8}
         >
           {beat.lyric.text}
@@ -218,7 +221,7 @@ export function BeatSlotGroup({
           fontSize={Math.round(12 * dynamicScale)}
           fontStyle="italic"
           fontFamily={`${dynamicFont}, serif`}
-          fill="currentColor"
+          fill={dynamicColor ?? "currentColor"}
           opacity={0.7}
         >
           {beat.dynamic}

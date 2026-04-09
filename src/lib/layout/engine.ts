@@ -169,52 +169,63 @@ function breakIntoLines(
     return lines
   }
 
-  // Auto: greedy line-breaking
-  const lines: BarInfo[][] = []
-  let currentLine: BarInfo[] = []
-  let currentWidth = 0
-  let lastSectionId = ""
+  // ── Auto: target TARGET_BPL bars/line, drop for busy sections ──────────
+  //
+  // Most chord charts aim for 4 bars per line. We honor that as a ceiling,
+  // then per-section check: does every consecutive 4-bar window fit within
+  // the (clef-narrow) available width? If not, try 3, then 2, then 1.
+  // This keeps the section uniform rather than ragged, and only pulls the
+  // count down when busier bars (wide chords, 16ths, lyrics) demand it.
+  const TARGET_BPL = 4
 
-  for (const bar of bars) {
-    const barWidth = bar.naturalWidth + (currentLine.length > 0 ? barGap : 0)
-
-    // Start new line if section changes
-    if (currentLine.length > 0 && bar.sectionId !== currentLine[0].sectionId) {
-      lines.push(currentLine)
-      lastSectionId = currentLine[0].sectionId
-      currentLine = [bar]
-      // Determine available width for the new line
-      const isNewSection = bar.sectionId !== lastSectionId
-      const showClef = lineShowsClef(lines.length, isNewSection, config.clefDisplay)
-      currentWidth = bar.naturalWidth
-      const available = showClef ? narrowAvailable : wideAvailable
-      // If this single bar already exceeds, it'll still be placed
-      if (currentWidth > available) {
-        // still push it as its own line below
-      }
-      continue
+  const groupWidth = (
+    sectionBars: BarInfo[],
+    start: number,
+    count: number,
+  ): number => {
+    let w = 0
+    for (let i = 0; i < count; i++) {
+      w += sectionBars[start + i]!.naturalWidth
     }
-
-    // Determine available width for current line
-    const isNewSection = currentLine.length === 0
-      ? bar.sectionId !== lastSectionId
-      : currentLine[0].sectionId !== lastSectionId
-    const showClef = lineShowsClef(lines.length, isNewSection, config.clefDisplay)
-    const available = showClef ? narrowAvailable : wideAvailable
-
-    if (currentWidth + barWidth > available && currentLine.length > 0) {
-      lines.push(currentLine)
-      lastSectionId = currentLine[0].sectionId
-      currentLine = [bar]
-      currentWidth = bar.naturalWidth
-    } else {
-      currentLine.push(bar)
-      currentWidth += barWidth
-    }
+    return w + Math.max(0, count - 1) * barGap
   }
 
-  if (currentLine.length > 0) {
-    lines.push(currentLine)
+  const lines: BarInfo[][] = []
+  let sectionStart = 0
+  while (sectionStart < bars.length) {
+    const sid = bars[sectionStart]!.sectionId
+    let sectionEnd = sectionStart
+    while (sectionEnd < bars.length && bars[sectionEnd]!.sectionId === sid) {
+      sectionEnd++
+    }
+    const sectionBars = bars.slice(sectionStart, sectionEnd)
+    const n = sectionBars.length
+
+    // Use the clef-narrow available width as the conservative ceiling so
+    // every line in the section is uniform regardless of which shows the clef.
+    const available = narrowAvailable
+
+    // Pick the largest bpl <= TARGET_BPL where every k-window fits.
+    // (Trailing partial group is by definition <= chosen, so it always fits.)
+    let chosen = Math.min(TARGET_BPL, n)
+    while (chosen > 1) {
+      let allFit = true
+      for (let i = 0; i + chosen <= n; i++) {
+        if (groupWidth(sectionBars, i, chosen) > available) {
+          allFit = false
+          break
+        }
+      }
+      if (allFit) break
+      chosen--
+    }
+
+    // Split section into uniform lines of `chosen` bars each
+    for (let i = 0; i < n; i += chosen) {
+      lines.push(sectionBars.slice(i, i + chosen))
+    }
+
+    sectionStart = sectionEnd
   }
 
   return lines

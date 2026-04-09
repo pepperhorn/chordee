@@ -132,6 +132,8 @@ export const ChartMetaSchema = z.object({
   clefDisplay: z.enum(["start", "section", "eachLine"]).default("start"),
   showClef: z.boolean().default(false),
   showKeySignature: z.boolean().default(true),
+  copyright: z.string().default(""),
+  footerText: z.string().default(""),
 })
 
 export const ChordChartSchema = z.object({

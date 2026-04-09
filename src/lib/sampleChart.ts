@@ -85,6 +85,8 @@ export const SAMPLE_CHART: ChordChart = {
     clefDisplay: "start",
     showClef: false,
     showKeySignature: true,
+    copyright: "",
+    footerText: "",
   },
   sections: [
     {

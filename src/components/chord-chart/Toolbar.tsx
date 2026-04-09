@@ -24,6 +24,7 @@ import {
   Volume2,
   VolumeX,
   ChevronDown,
+  FileDown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -40,6 +41,7 @@ import { exportToMarkdown } from "@/lib/io"
 import { parseChord } from "@/lib/chordParser"
 import { formatChord } from "@/lib/utils"
 import { usePlaybackStore } from "@/lib/plugins/playback/playback-store"
+import { PdfExportDialog } from "@/components/export/PdfExportDialog"
 
 function ToolbarButton({
   icon: Icon,
@@ -64,7 +66,7 @@ function ToolbarButton({
         <Button
           variant={active ? "secondary" : "ghost"}
           size="icon"
-          className={`toolbar-btn h-8 w-8 text-white hover:bg-white/20 ${active ? "bg-white/25" : ""} ${extraClass ?? ""}`}
+          className={`toolbar-btn h-8 w-8 text-foreground md:text-white hover:bg-muted md:hover:bg-white/20 ${active ? "bg-muted md:bg-white/25" : ""} ${extraClass ?? ""}`}
           onClick={onClick}
           disabled={disabled}
           aria-label={label}
@@ -84,16 +86,39 @@ function ToolbarButton({
   )
 }
 
-function MobileListenButton() {
-  const { listenMode, toggleListenMode } = usePlaybackStore()
+function MobilePlaybackGroup() {
+  const { listenMode, toggleListenMode, instrument, setInstrument, useBass, setUseBass } = usePlaybackStore()
   return (
-    <ToolbarButton
-      icon={listenMode ? Volume2 : VolumeX}
-      label={listenMode ? "Listen ON" : "Listen OFF"}
-      onClick={toggleListenMode}
-      active={listenMode}
-      className="btn-listen-mobile"
-    />
+    <div className="mobile-playback-group flex items-center gap-1 w-full pt-1 border-t mt-1">
+      <ToolbarButton
+        icon={listenMode ? Volume2 : VolumeX}
+        label={listenMode ? "Listen ON" : "Listen OFF"}
+        onClick={toggleListenMode}
+        active={listenMode}
+        className="btn-listen-mobile"
+      />
+      <div className="mobile-playback-options flex items-center gap-1 ml-1">
+        {(["piano", "guitar"] as const).map((inst) => (
+          <button
+            key={inst}
+            className={`mobile-playback-btn rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+              instrument === inst ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+            }`}
+            onClick={() => setInstrument(inst)}
+          >
+            {inst === "piano" ? "Piano" : "Guitar"}
+          </button>
+        ))}
+        <button
+          className={`mobile-playback-btn rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+            useBass ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+          }`}
+          onClick={() => setUseBass(!useBass)}
+        >
+          Bass
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -245,6 +270,7 @@ export function Toolbar() {
   }
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [pdfDialogOpen, setPdfDialogOpen] = useState(false)
   const isMac = typeof navigator !== "undefined" && navigator.platform?.includes("Mac")
   const mod = isMac ? "⌘" : "Ctrl+"
 
@@ -253,12 +279,12 @@ export function Toolbar() {
       <>
       {/* Mobile: minimal bar with logo + hamburger */}
       <div className="toolbar-mobile md:hidden flex h-10 items-center justify-between border-b bg-background/95 px-2">
-        <span
-          className="chordee-logo select-none text-base leading-none"
-          style={{ fontFamily: "'Monoton', cursive", color: "#e53e3e" }}
-        >
-          chordee
-        </span>
+        <img
+          src="/CHORDEE.png"
+          alt="chordee"
+          className="chordee-logo select-none h-5 w-auto"
+          draggable={false}
+        />
         <Button
           variant="ghost"
           size="icon"
@@ -286,10 +312,11 @@ export function Toolbar() {
           <ToolbarButton icon={Type} label="Dynamics" onClick={toggleShowDynamics} active={ui.showDynamics} className="btn-toggle-dynamics" />
           <ToolbarButton icon={MessageSquare} label="Lyrics" onClick={toggleShowLyrics} active={ui.showLyrics} className="btn-toggle-lyrics" />
           <ToolbarButton icon={ui.theme === "dark" ? Moon : Sun} label="Theme" onClick={handleThemeToggle} className="btn-theme-toggle" />
-          <MobileListenButton />
+          <MobilePlaybackGroup />
           <ToolbarButton icon={Upload} label="Import" onClick={handleImport} className="btn-import" />
           <ToolbarButton icon={Download} label="Export JSON" onClick={handleExportJSON} className="btn-export-json" />
           <ToolbarButton icon={FileText} label="Export MD" onClick={handleExportMarkdown} className="btn-export-markdown" />
+          <ToolbarButton icon={FileDown} label="Export PDF" onClick={() => { setPdfDialogOpen(true); setMobileMenuOpen(false) }} className="btn-export-pdf" />
           {/* Bars per line */}
           <div className="mobile-bpl flex items-center gap-1 w-full pt-1 border-t mt-1">
             <span className="text-[10px] text-muted-foreground shrink-0">Bars/Line:</span>
@@ -329,12 +356,13 @@ export function Toolbar() {
         className="toolbar hidden md:flex h-11 items-center gap-1 border-b bg-black px-3"
       >
         {/* Logo */}
-        <span
-          className="chordee-logo select-none text-lg leading-none"
-          style={{ fontFamily: "'Monoton', cursive", color: "#ef4444", textShadow: "0 0 8px rgba(255,255,255,0.25), 0 0 2px rgba(255,255,255,0.15)" }}
-        >
-          chordee
-        </span>
+        <img
+          src="/CHORDEE.png"
+          alt="chordee"
+          className="chordee-logo select-none h-6 w-auto"
+          style={{ filter: "drop-shadow(0 0 4px rgba(255,255,255,0.25))" }}
+          draggable={false}
+        />
 
         <Separator orientation="vertical" className="toolbar-sep mx-1.5 h-5 bg-white/20" />
 
@@ -605,6 +633,13 @@ export function Toolbar() {
             onClick={handleExportMarkdown}
             className="btn-export-markdown"
           />
+          <ToolbarButton
+            icon={FileDown}
+            label="Export PDF"
+            shortcut="Open PDF export dialog"
+            onClick={() => setPdfDialogOpen(true)}
+            className="btn-export-pdf"
+          />
         </div>
 
         <Separator orientation="vertical" className="toolbar-sep mx-1 h-5 bg-white/20" />
@@ -612,6 +647,8 @@ export function Toolbar() {
         {/* Playback / Listen */}
         <PlaybackToolbarGroup />
       </div>
+
+      <PdfExportDialog open={pdfDialogOpen} onOpenChange={setPdfDialogOpen} />
       </>
     </TooltipProvider>
   )

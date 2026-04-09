@@ -2,11 +2,13 @@ import type { LayoutResult, LayoutElement } from "@/lib/layout/types"
 import { BarGroup } from "./BarGroup"
 import { SectionHeader } from "./SectionHeader"
 import { useChartStore } from "@/lib/store"
-import { RELATIVE_SIZE_SCALE } from "@/lib/fonts"
+import { RELATIVE_SIZE_SCALE, type FontConfig } from "@/lib/fonts"
 
 interface ChartSVGProps {
   layout: LayoutResult
   containerWidth: number
+  /** Per-instance overrides merged with the store fontConfig. Used for preview/export. */
+  fontConfigOverride?: Partial<FontConfig>
 }
 
 function renderElement(el: LayoutElement, lineY: number) {
@@ -20,9 +22,12 @@ function renderElement(el: LayoutElement, lineY: number) {
   }
 }
 
-export function ChartSVG({ layout, containerWidth }: ChartSVGProps) {
+export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSVGProps) {
   const meta = useChartStore((s) => s.chart.meta)
-  const fc = useChartStore((s) => s.ui.fontConfig)
+  const storeFc = useChartStore((s) => s.ui.fontConfig)
+  const fc: FontConfig = fontConfigOverride
+    ? { ...storeFc, ...fontConfigOverride }
+    : storeFc
   const setSelection = useChartStore((s) => s.setSelection)
 
   const headingScale = RELATIVE_SIZE_SCALE[fc.headingSize] ?? 1
@@ -50,7 +55,22 @@ export function ChartSVG({ layout, containerWidth }: ChartSVGProps) {
   const headerH = meta.title
     ? Math.round(40 + titleFontSize + (hasSubtitle ? subtitleFontSize + 4 : 0) + infoFontSize)
     : 0
-  const totalH = layout.totalHeight + headerH
+
+  // Chart-level copyright + footer-text rendered 20px below the last line of music.
+  const COPYRIGHT_OFFSET = 20
+  const copyrightFontSize = Math.max(10, Math.round(11 * bodyScale))
+  const footerLineGap = 3
+  const hasCopyright = !!meta.copyright?.trim()
+  const hasFooterText = !!meta.footerText?.trim()
+  const footerLineCount = (hasCopyright ? 1 : 0) + (hasFooterText ? 1 : 0)
+  const copyrightBlockH =
+    footerLineCount > 0
+      ? COPYRIGHT_OFFSET +
+        footerLineCount * copyrightFontSize +
+        (footerLineCount - 1) * footerLineGap +
+        8
+      : 0
+  const totalH = layout.totalHeight + headerH + copyrightBlockH
 
   return (
     <svg
@@ -58,6 +78,8 @@ export function ChartSVG({ layout, containerWidth }: ChartSVGProps) {
       className="chart-svg"
       role="img"
       aria-label={`Chord chart: ${meta.title || "Untitled"}`}
+      data-header-height={headerH}
+      data-total-height={totalH}
       width={containerWidth}
       height={totalH}
       style={{ display: "block" }}
@@ -79,7 +101,7 @@ export function ChartSVG({ layout, containerWidth }: ChartSVGProps) {
             fontSize={titleFontSize}
             fontWeight={700}
             fontFamily={`${fc.heading}, serif`}
-            fill="currentColor"
+            fill={fc.headingColor ?? "currentColor"}
           >
             {meta.title}
           </text>
@@ -93,7 +115,7 @@ export function ChartSVG({ layout, containerWidth }: ChartSVGProps) {
               textAnchor="middle"
               fontSize={subtitleFontSize}
               fontFamily={`${fc.subtitle}, serif`}
-              fill="currentColor"
+              fill={fc.subtitleColor ?? "currentColor"}
               opacity={0.6}
             >
               {meta.subtitle}
@@ -109,7 +131,7 @@ export function ChartSVG({ layout, containerWidth }: ChartSVGProps) {
               textAnchor="end"
               fontSize={infoFontSize}
               fontFamily={`${fc.body}, sans-serif`}
-              fill="currentColor"
+              fill={fc.bodyColor ?? "currentColor"}
               opacity={0.6}
             >
               {[meta.composer, meta.arranger && `arr. ${meta.arranger}`].filter(Boolean).join(" — ")}
@@ -125,7 +147,7 @@ export function ChartSVG({ layout, containerWidth }: ChartSVGProps) {
               textAnchor="start"
               fontSize={infoFontSize}
               fontFamily={`${fc.body}, sans-serif`}
-              fill="currentColor"
+              fill={fc.bodyColor ?? "currentColor"}
               opacity={0.6}
             >
               {[tempoString, meta.style].filter(Boolean).join("  ")}
@@ -147,6 +169,42 @@ export function ChartSVG({ layout, containerWidth }: ChartSVGProps) {
           </g>
         ))}
       </g>
+
+      {/* Chart-level copyright + footer text — 20px below the bottom of the chord chart */}
+      {hasCopyright && (
+        <text
+          className="chart-copyright"
+          x={containerWidth / 2}
+          y={headerH + layout.totalHeight + COPYRIGHT_OFFSET + copyrightFontSize}
+          textAnchor="middle"
+          fontSize={copyrightFontSize}
+          fontFamily={`${fc.body}, sans-serif`}
+          fill={fc.bodyColor ?? "currentColor"}
+          opacity={0.55}
+        >
+          {meta.copyright}
+        </text>
+      )}
+      {hasFooterText && (
+        <text
+          className="chart-footer-text"
+          x={containerWidth / 2}
+          y={
+            headerH +
+            layout.totalHeight +
+            COPYRIGHT_OFFSET +
+            (hasCopyright ? copyrightFontSize + footerLineGap + copyrightFontSize : copyrightFontSize)
+          }
+          textAnchor="middle"
+          fontSize={copyrightFontSize}
+          fontFamily={`${fc.body}, sans-serif`}
+          fill={fc.bodyColor ?? "currentColor"}
+          opacity={0.55}
+          fontStyle="italic"
+        >
+          {meta.footerText}
+        </text>
+      )}
     </svg>
   )
 }

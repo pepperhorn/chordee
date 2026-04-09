@@ -14,6 +14,7 @@ import type {
   ChartMeta,
 } from "./schema"
 import { ChordChartSchema } from "./schema"
+import { buildUserStyle, UserStyleSchema, type UserStyle } from "./userStyle"
 import {
   createBeat,
   createBeatSlot,
@@ -426,14 +427,54 @@ export const useChartStore = create<ChartState>()(
 
       // ── I/O ──────────────────────────────────────────────────
 
-      exportJSON: () => JSON.stringify(get().chart, null, 2),
+      exportJSON: () => {
+        const state = get()
+        const { fontConfig, measuresPerLineMode, justificationStrategy, paperTexture, bgColor } = state.ui
+        const style = buildUserStyle(
+          fontConfig,
+          measuresPerLineMode,
+          state.chart.meta.measuresPerLine,
+          justificationStrategy,
+          undefined,
+          { texture: paperTexture, bgColor },
+        )
+        // Embed the full style block on the chart so reopening restores the view.
+        const bundle = { ...state.chart, style }
+        return JSON.stringify(bundle, null, 2)
+      },
 
       importJSON: (json) => {
         try {
           const data = JSON.parse(json)
+          // Strip the embedded style block before validating against ChordChartSchema
+          // (which doesn't know about it) and apply it to UI state after chart loads.
+          let embeddedStyle: UserStyle | null = null
+          if (data && typeof data === "object" && "style" in data && data.style) {
+            const parsed = UserStyleSchema.safeParse(data.style)
+            if (parsed.success) embeddedStyle = parsed.data
+            delete data.style
+          }
           const chart = ChordChartSchema.parse(data)
           saveHistory("Import chart")
-          set({ chart })
+          set((s) => {
+            const next: Partial<EditorUIState> = {
+              fontConfig: s.ui.fontConfig,
+              measuresPerLineMode: s.ui.measuresPerLineMode,
+              justificationStrategy: s.ui.justificationStrategy,
+              paperTexture: s.ui.paperTexture,
+              bgColor: s.ui.bgColor,
+            }
+            if (embeddedStyle) {
+              next.fontConfig = { ...s.ui.fontConfig, ...embeddedStyle.fonts } as FontConfig
+              next.measuresPerLineMode = embeddedStyle.layout.measuresPerLineMode
+              next.justificationStrategy = embeddedStyle.layout.justification
+              if (embeddedStyle.page) {
+                next.paperTexture = embeddedStyle.page.texture
+                next.bgColor = embeddedStyle.page.bgColor
+              }
+            }
+            return { chart, ui: { ...s.ui, ...next } }
+          })
           return true
         } catch {
           return false

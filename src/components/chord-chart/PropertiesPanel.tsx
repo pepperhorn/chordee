@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,6 +15,8 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { useChartStore } from "@/lib/store"
 import { FONT_FAMILIES, RELATIVE_SIZES, type RelativeSize } from "@/lib/fonts"
+import { buildUserStyle, parseUserStyle } from "@/lib/userStyle"
+import { downloadFile, uploadFile } from "@/lib/io"
 import { BARLINE_TYPES, DYNAMICS, SECTION_PRESETS, TIME_SIGNATURES, NAVIGATION_TYPES } from "@/lib/constants"
 import { formatChord } from "@/lib/utils"
 import { ConfirmDialog } from "./ConfirmDialog"
@@ -25,8 +27,12 @@ export function PropertiesPanel() {
   const [collapsed, setCollapsed] = useState(() =>
     typeof window !== "undefined" && window.innerWidth < 768
   )
+  const [expandedFonts, setExpandedFonts] = useState<Record<string, boolean>>({})
+  const toggleFontExpanded = (key: string) =>
+    setExpandedFonts((prev) => ({ ...prev, [key]: !prev[key] }))
   const {
     updateMeta, setFontConfig, setJustificationStrategy, setMeasuresPerLineMode,
+    setPaperTexture, setBgColor,
     updateSection, setSectionTimeSignature, updateMeasure, updateBeat, setBeatDivision, addSection, addMeasure,
     deleteSection, deleteMeasure,
   } = useChartStore()
@@ -35,6 +41,22 @@ export function PropertiesPanel() {
   const fontConfig = useChartStore((s) => s.ui.fontConfig)
   const justification = useChartStore((s) => s.ui.justificationStrategy)
   const measuresMode = useChartStore((s) => s.ui.measuresPerLineMode)
+  const paperTexture = useChartStore((s) => s.ui.paperTexture)
+  const bgColor = useChartStore((s) => s.ui.bgColor)
+
+  // Derive page background mode from texture + bgColor for the picker
+  type PageBgMode = "parchment" | "crumpled" | "flat"
+  const pageBgMode: PageBgMode =
+    paperTexture === "crumpled"
+      ? "crumpled"
+      : paperTexture === "none"
+        ? "flat"
+        : "parchment"
+  const setPageBgMode = (mode: PageBgMode) => {
+    if (mode === "parchment") setPaperTexture("subtle")
+    else if (mode === "crumpled") setPaperTexture("crumpled")
+    else setPaperTexture("none")
+  }
   const selection = useChartStore((s) => s.ui.selection)
 
   if (collapsed) {
@@ -77,10 +99,11 @@ export function PropertiesPanel() {
 
       <ScrollArea className="flex-1">
         <Tabs defaultValue="chart" className="w-full">
-          <TabsList className="tab-list mx-3 mt-2 w-[calc(100%-1.5rem)]">
-            <TabsTrigger value="chart" className="tab-chart flex-1">Chart</TabsTrigger>
-            <TabsTrigger value="selection" className="tab-selection flex-1">Selection</TabsTrigger>
-            <TabsTrigger value="controls" className="tab-controls flex-1 max-md:hidden">Controls</TabsTrigger>
+          <TabsList className="tab-list mx-3 mt-2 grid h-auto w-[calc(100%-1.5rem)] grid-cols-2 gap-1 p-1">
+            <TabsTrigger value="chart" className="tab-chart text-xs">Chart</TabsTrigger>
+            <TabsTrigger value="layout" className="tab-layout text-xs">Layout</TabsTrigger>
+            <TabsTrigger value="selection" className="tab-selection text-xs">Selection</TabsTrigger>
+            <TabsTrigger value="controls" className="tab-controls text-xs max-md:hidden">Controls</TabsTrigger>
           </TabsList>
 
           <TabsContent value="chart" className="chart-tab px-3 pb-4">
@@ -121,6 +144,26 @@ export function PropertiesPanel() {
                   value={meta.arranger}
                   onChange={(e) => updateMeta({ arranger: e.target.value })}
                   placeholder="Optional"
+                />
+              </div>
+
+              <div className="field-group space-y-1">
+                <Label className="field-label text-xs">Copyright</Label>
+                <Input
+                  className="field-input h-8 text-sm"
+                  value={meta.copyright ?? ""}
+                  onChange={(e) => updateMeta({ copyright: e.target.value })}
+                  placeholder="© 2026 Your Name"
+                />
+              </div>
+
+              <div className="field-group space-y-1">
+                <Label className="field-label text-xs">Footer Text</Label>
+                <Input
+                  className="field-input h-8 text-sm"
+                  value={meta.footerText ?? ""}
+                  onChange={(e) => updateMeta({ footerText: e.target.value })}
+                  placeholder="Optional — shown below copyright"
                 />
               </div>
 
@@ -193,7 +236,194 @@ export function PropertiesPanel() {
                 </Label>
               </div>
 
-              <Separator className="meta-sep" />
+              <Separator className="clef-sep" />
+
+              {/* Clef & Key Signature */}
+              <div className="clef-section space-y-3">
+                <Label className="section-label text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Clef & Key Signature
+                </Label>
+
+                <div className="field-group space-y-1">
+                  <Label className="field-label text-xs">Clef</Label>
+                  <Select
+                    value={meta.clef}
+                    onValueChange={(v) => updateMeta({ clef: v as any })}
+                  >
+                    <SelectTrigger className="field-select h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="treble">Treble</SelectItem>
+                      <SelectItem value="alto">Alto</SelectItem>
+                      <SelectItem value="tenor">Tenor</SelectItem>
+                      <SelectItem value="bass">Bass</SelectItem>
+                      <SelectItem value="percussion">Percussion</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="clef-checkbox-grid grid grid-cols-2 gap-x-2 gap-y-1.5">
+                  <div className="field-group flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="show-clef"
+                      className="field-checkbox h-4 w-4 rounded border-input"
+                      checked={meta.showClef ?? true}
+                      onChange={(e) => updateMeta({ showClef: e.target.checked })}
+                    />
+                    <Label htmlFor="show-clef" className="field-label text-xs">
+                      Show Clef
+                    </Label>
+                  </div>
+
+                  <div className="field-group flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="show-key-sig"
+                      className="field-checkbox h-4 w-4 rounded border-input"
+                      checked={meta.showKeySignature}
+                      onChange={(e) => updateMeta({ showKeySignature: e.target.checked })}
+                    />
+                    <Label htmlFor="show-key-sig" className="field-label text-xs">
+                      Show Key Signature
+                    </Label>
+                  </div>
+                </div>
+
+                {(meta.showClef ?? true) && (
+                  <div className="field-group space-y-1">
+                    <Label className="field-label text-xs">Clef At</Label>
+                    <div className="clef-display-toggle flex gap-0.5 rounded-md border border-input p-0.5">
+                      {([
+                        ["start", "Start"],
+                        ["section", "Section"],
+                        ["eachLine", "Each Line"],
+                      ] as const).map(([value, label]) => (
+                        <button
+                          key={value}
+                          className={`clef-display-btn flex-1 rounded-sm px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+                            (meta.clefDisplay ?? "start") === value
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                          }`}
+                          onClick={() => updateMeta({ clefDisplay: value })}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </TabsContent>
+
+          <TabsContent value="layout" className="layout-tab px-3 pb-4">
+            <div className="pt-2 space-y-4">
+              {/* Style import/export */}
+              <div className="style-io-section space-y-2">
+                <Label className="section-label text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  User Style
+                </Label>
+                <div className="flex gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="btn-style-export h-7 flex-1 text-[11px]"
+                    onClick={() => {
+                      const style = buildUserStyle(
+                        fontConfig,
+                        measuresMode,
+                        meta.measuresPerLine,
+                        justification,
+                      )
+                      const json = JSON.stringify(style, null, 2)
+                      downloadFile(json, "chordee-style.json", "application/json")
+                    }}
+                  >
+                    Export
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="btn-style-import h-7 flex-1 text-[11px]"
+                    onClick={async () => {
+                      try {
+                        const content = await uploadFile(".json")
+                        const parsed = parseUserStyle(content)
+                        if (!parsed) return
+                        setFontConfig(parsed.fonts)
+                        setMeasuresPerLineMode(parsed.layout.measuresPerLineMode)
+                        if (parsed.layout.measuresPerLine != null) {
+                          updateMeta({ measuresPerLine: parsed.layout.measuresPerLine })
+                        }
+                        setJustificationStrategy(parsed.layout.justification)
+                      } catch {
+                        /* user cancelled */
+                      }
+                    }}
+                  >
+                    Import
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Saves layout + font settings as JSON. User accounts soon.
+                </p>
+              </div>
+
+              <Separator className="layout-sep" />
+
+              {/* Page background */}
+              <div className="page-bg-section space-y-2">
+                <Label className="section-label text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Page Background
+                </Label>
+                <div className="page-bg-picker grid grid-cols-3 gap-1">
+                  {([
+                    ["parchment", "Parchment"],
+                    ["crumpled", "Crumpled"],
+                    ["flat", "Flat"],
+                  ] as const).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      className={`page-bg-btn rounded px-1.5 py-1 text-[11px] font-medium transition-colors ${
+                        pageBgMode === mode
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                      onClick={() => setPageBgMode(mode)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {pageBgMode === "flat" && (
+                  <div className="flat-color-row flex items-center gap-2 pt-1">
+                    <Label className="field-label text-xs flex-1">Fill color</Label>
+                    <label
+                      className="page-bg-color-picker relative inline-flex h-8 w-14 shrink-0 cursor-pointer items-center justify-center rounded-md border border-input bg-background hover:bg-accent"
+                      title="Page background color"
+                      aria-label="Page background color"
+                    >
+                      <span
+                        className="page-bg-swatch h-5 w-10 rounded-sm border border-border"
+                        style={{ backgroundColor: bgColor || "#ffffff" }}
+                      />
+                      <input
+                        type="color"
+                        className="sr-only"
+                        value={bgColor || "#ffffff"}
+                        onChange={(e) => setBgColor(e.target.value)}
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              <Separator className="layout-sep-2" />
 
               {/* Layout options */}
               <div className="layout-section space-y-3">
@@ -248,130 +478,89 @@ export function PropertiesPanel() {
                 </div>
               </div>
 
-              <Separator className="clef-sep" />
-
-              {/* Clef & Key Signature */}
-              <div className="clef-section space-y-3">
-                <Label className="section-label text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Clef & Key Signature
-                </Label>
-
-                <div className="field-group space-y-1">
-                  <Label className="field-label text-xs">Clef</Label>
-                  <Select
-                    value={meta.clef}
-                    onValueChange={(v) => updateMeta({ clef: v as any })}
-                  >
-                    <SelectTrigger className="field-select h-8 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="treble">Treble</SelectItem>
-                      <SelectItem value="alto">Alto</SelectItem>
-                      <SelectItem value="tenor">Tenor</SelectItem>
-                      <SelectItem value="bass">Bass</SelectItem>
-                      <SelectItem value="percussion">Percussion</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="field-group flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="show-clef"
-                    className="field-checkbox h-4 w-4 rounded border-input"
-                    checked={meta.showClef ?? true}
-                    onChange={(e) => updateMeta({ showClef: e.target.checked })}
-                  />
-                  <Label htmlFor="show-clef" className="field-label text-xs">
-                    Show Clef
-                  </Label>
-                </div>
-
-                <div className="field-group flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="show-key-sig"
-                    className="field-checkbox h-4 w-4 rounded border-input"
-                    checked={meta.showKeySignature}
-                    onChange={(e) => updateMeta({ showKeySignature: e.target.checked })}
-                  />
-                  <Label htmlFor="show-key-sig" className="field-label text-xs">
-                    Show Key Signature
-                  </Label>
-                </div>
-
-                {(meta.showClef ?? true) && (
-                  <div className="field-group space-y-1">
-                    <Label className="field-label text-xs">Clef At</Label>
-                    <div className="clef-display-toggle flex gap-0.5 rounded-md border border-input p-0.5">
-                      {([
-                        ["start", "Start"],
-                        ["section", "Section"],
-                        ["eachLine", "Each Line"],
-                      ] as const).map(([value, label]) => (
-                        <button
-                          key={value}
-                          className={`clef-display-btn flex-1 rounded-sm px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
-                            (meta.clefDisplay ?? "start") === value
-                              ? "bg-primary text-primary-foreground"
-                              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                          }`}
-                          onClick={() => updateMeta({ clefDisplay: value })}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
               <Separator className="font-sep" />
 
               {/* Font configuration */}
-              <div className="font-section space-y-3">
+              <div className="font-section space-y-2">
                 <Label className="section-label text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Fonts
                 </Label>
 
                 {(
                   [
-                    ["chord", "Chord", "chordSize"],
-                    ["heading", "Heading", "headingSize"],
-                    ["subtitle", "Subtitle", "subtitleSize"],
-                    ["body", "Body", "bodySize"],
-                    ["lyric", "Lyric", "lyricSize"],
-                    ["dynamic", "Dynamic", "dynamicSize"],
-                    ["rehearsal", "Rehearsal / Section", "rehearsalSize"],
-                    ["timeSignature", "Time Signature", "timeSignatureSize"],
-                    ["clef", "Clef & Key Sig", "clefSize"],
+                    ["chord", "Chord", "chordSize", "chordColor"],
+                    ["heading", "Heading", "headingSize", "headingColor"],
+                    ["subtitle", "Subtitle", "subtitleSize", "subtitleColor"],
+                    ["body", "Body", "bodySize", "bodyColor"],
+                    ["lyric", "Lyric", "lyricSize", "lyricColor"],
+                    ["dynamic", "Dynamic", "dynamicSize", "dynamicColor"],
+                    ["rehearsal", "Rehearsal / Section", "rehearsalSize", "rehearsalColor"],
+                    ["timeSignature", "Time Signature", "timeSignatureSize", "timeSignatureColor"],
+                    ["clef", "Clef & Key Sig", "clefSize", "clefColor"],
                   ] as const
-                ).map(([fontKey, label, sizeKey]) => (
-                  <div key={fontKey} className="field-group space-y-1.5">
-                    <Label className="field-label text-xs">{label}</Label>
-                    <Select
-                      value={fontConfig[fontKey]}
-                      onValueChange={(v) => setFontConfig({ [fontKey]: v })}
-                    >
-                      <SelectTrigger className="field-select h-8 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {FONT_FAMILIES.map((f) => (
-                          <SelectItem key={f.value} value={f.value}>
-                            {f.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <SizeToggle
-                      label=""
-                      value={fontConfig[sizeKey] as RelativeSize}
-                      onChange={(v) => setFontConfig({ [sizeKey]: v })}
-                    />
-                  </div>
-                ))}
+                ).map(([fontKey, label, sizeKey, colorKey]) => {
+                  const isExpanded = !!expandedFonts[fontKey]
+                  return (
+                    <div key={fontKey} className="field-group space-y-1.5 rounded-md border border-input/50 p-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="field-label text-xs font-medium">{label}</Label>
+                        <button
+                          type="button"
+                          className="font-expand-toggle rounded hover:bg-accent p-0.5"
+                          onClick={() => toggleFontExpanded(fontKey)}
+                          aria-label={isExpanded ? `Collapse ${label} details` : `Expand ${label} details`}
+                          title={isExpanded ? "Hide size" : "Show size"}
+                        >
+                          {isExpanded ? (
+                            <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                          )}
+                        </button>
+                      </div>
+                      <div className="font-color-row flex items-center gap-1.5">
+                        <Select
+                          value={fontConfig[fontKey]}
+                          onValueChange={(v) => setFontConfig({ [fontKey]: v })}
+                        >
+                          <SelectTrigger className="field-select h-8 text-sm flex-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONT_FAMILIES.map((f) => (
+                              <SelectItem key={f.value} value={f.value}>
+                                {f.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <label
+                          className="font-color-picker relative inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-input bg-background hover:bg-accent"
+                          title={`${label} color`}
+                          aria-label={`${label} color`}
+                        >
+                          <span
+                            className="font-color-swatch h-4 w-4 rounded-sm border border-border"
+                            style={{ backgroundColor: fontConfig[colorKey] ?? "#000000" }}
+                          />
+                          <input
+                            type="color"
+                            className="sr-only"
+                            value={fontConfig[colorKey] ?? "#000000"}
+                            onChange={(e) => setFontConfig({ [colorKey]: e.target.value })}
+                          />
+                        </label>
+                      </div>
+                      {isExpanded && (
+                        <SizeToggle
+                          label=""
+                          value={fontConfig[sizeKey] as RelativeSize}
+                          onChange={(v) => setFontConfig({ [sizeKey]: v })}
+                        />
+                      )}
+                    </div>
+                  )
+                })}
 
                 {/* Line Spacing */}
                 <SizeToggle

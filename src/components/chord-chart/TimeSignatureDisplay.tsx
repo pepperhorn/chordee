@@ -20,6 +20,7 @@ export function TimeSignatureDisplay({
 }: TimeSignatureDisplayProps) {
   const tsFont = useChartStore((s) => s.ui.fontConfig.timeSignature)
   const tsSize = useChartStore((s) => s.ui.fontConfig.timeSignatureSize)
+  const tsColor = useChartStore((s) => s.ui.fontConfig.timeSignatureColor)
 
   const scale = RELATIVE_SIZE_SCALE[tsSize] ?? 1
   const fontSize = BASE_FONT_SIZE * scale
@@ -40,7 +41,7 @@ export function TimeSignatureDisplay({
         fontSize={fontSize}
         fontFamily={`${tsFont}, serif`}
         fontWeight={700}
-        fill="currentColor"
+        fill={tsColor ?? "currentColor"}
       >
         {beats}
       </text>
@@ -52,7 +53,7 @@ export function TimeSignatureDisplay({
         fontSize={fontSize}
         fontFamily={`${tsFont}, serif`}
         fontWeight={700}
-        fill="currentColor"
+        fill={tsColor ?? "currentColor"}
       >
         {beatUnit}
       </text>

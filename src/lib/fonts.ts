@@ -19,22 +19,31 @@ export const RELATIVE_SIZES: { value: RelativeSize; label: string }[] = [
 export interface FontConfig {
   heading: string
   headingSize: RelativeSize
+  headingColor?: string
   subtitle: string
   subtitleSize: RelativeSize
+  subtitleColor?: string
   body: string
   bodySize: RelativeSize
+  bodyColor?: string
   lyric: string
   lyricSize: RelativeSize
+  lyricColor?: string
   dynamic: string
   dynamicSize: RelativeSize
+  dynamicColor?: string
   chord: string
   chordSize: RelativeSize
+  chordColor?: string
   timeSignature: string
   timeSignatureSize: RelativeSize
+  timeSignatureColor?: string
   rehearsal: string
   rehearsalSize: RelativeSize
+  rehearsalColor?: string
   clef: string
   clefSize: RelativeSize
+  clefColor?: string
   lineSpacing: RelativeSize
 }
 
