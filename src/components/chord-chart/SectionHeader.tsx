@@ -1,6 +1,7 @@
 import type { LayoutSectionHeader } from "@/lib/layout/types"
 import { useChartStore } from "@/lib/store"
 import { RELATIVE_SIZE_SCALE } from "@/lib/fonts"
+import { useFontConfigField } from "@/lib/fontConfigContext"
 
 interface SectionHeaderProps {
   header: LayoutSectionHeader
@@ -10,9 +11,9 @@ const BASE_SECTION_FONT_SIZE = 15
 const BASE_REHEARSAL_FONT_SIZE = 13
 
 export function SectionHeader({ header }: SectionHeaderProps) {
-  const rehearsalFont = useChartStore((s) => s.ui.fontConfig.rehearsal)
-  const rehearsalSize = useChartStore((s) => s.ui.fontConfig.rehearsalSize)
-  const rehearsalColor = useChartStore((s) => s.ui.fontConfig.rehearsalColor)
+  const rehearsalFont = useFontConfigField("rehearsal")
+  const rehearsalSize = useFontConfigField("rehearsalSize")
+  const rehearsalColor = useFontConfigField("rehearsalColor")
   const setSelection = useChartStore((s) => s.setSelection)
   const selection = useChartStore((s) => s.ui.selection)
 

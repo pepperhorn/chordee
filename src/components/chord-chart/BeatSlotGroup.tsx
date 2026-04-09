@@ -4,6 +4,7 @@ import { BeamedSlashGroup } from "./BeamedSlashGroup"
 import { ChordSymbol } from "./ChordSymbol"
 import { useChartStore } from "@/lib/store"
 import { RELATIVE_SIZE_SCALE } from "@/lib/fonts"
+import { useFontConfigField } from "@/lib/fontConfigContext"
 
 const BEAMED_DIVISIONS = new Set([
   "eighth",
@@ -37,13 +38,13 @@ export function BeatSlotGroup({
   const selection = useChartStore((s) => s.ui.selection)
   const editMode = useChartStore((s) => s.ui.editMode)
   const setSelection = useChartStore((s) => s.setSelection)
-  const lyricSize = useChartStore((s) => s.ui.fontConfig.lyricSize)
-  const lyricFont = useChartStore((s) => s.ui.fontConfig.lyric)
-  const lyricColor = useChartStore((s) => s.ui.fontConfig.lyricColor)
-  const dynamicSize = useChartStore((s) => s.ui.fontConfig.dynamicSize)
-  const dynamicFont = useChartStore((s) => s.ui.fontConfig.dynamic)
-  const dynamicColor = useChartStore((s) => s.ui.fontConfig.dynamicColor)
-  const chordSize = useChartStore((s) => s.ui.fontConfig.chordSize)
+  const lyricSize = useFontConfigField("lyricSize")
+  const lyricFont = useFontConfigField("lyric")
+  const lyricColor = useFontConfigField("lyricColor")
+  const dynamicSize = useFontConfigField("dynamicSize")
+  const dynamicFont = useFontConfigField("dynamic")
+  const dynamicColor = useFontConfigField("dynamicColor")
+  const chordSize = useFontConfigField("chordSize")
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768
   const isBeatSelected = selection?.beatId === beat.beatId
   const isBeamed = BEAMED_DIVISIONS.has(beat.division)

@@ -19,11 +19,15 @@ import {
 import { ChartSVG } from "@/components/chord-chart/ChartSVG"
 import { useChartLayout } from "@/lib/useChartLayout"
 import { useChartStore } from "@/lib/store"
+import { RELATIVE_SIZE_SCALE, type RelativeSize } from "@/lib/fonts"
 import {
   exportChartToPdf,
   paperDimsPt,
+  computePageGeometry,
+  paginate,
   type PaperSize,
   type Orientation,
+  type PageSpec,
 } from "@/lib/pdfExport"
 import { downloadFile } from "@/lib/io"
 
@@ -41,11 +45,221 @@ function detectDefaultPaper(): PaperSize {
   return "a4"
 }
 
+// ── Font auto-scale for tight bars-per-line ────────────────────────────
+// Heuristic: when the user asks for more than ~4 bars per line, step the
+// chord/lyric/dynamic sizes down so the content keeps fitting without
+// overlapping. Pure per-tier steps (no math), clamped at "sm".
+const SIZE_TIERS = ["sm", "md", "lg", "xl", "2xl"] as const
+type SizeTier = (typeof SIZE_TIERS)[number]
+function stepDown(s: SizeTier, steps: number): SizeTier {
+  const i = SIZE_TIERS.indexOf(s)
+  if (i < 0) return s
+  return SIZE_TIERS[Math.max(0, i - steps)]!
+}
+function computeFontScaleOverride(
+  bpl: BplOption,
+  base: { chordSize: SizeTier; lyricSize: SizeTier; dynamicSize: SizeTier },
+): { chordSize?: SizeTier; lyricSize?: SizeTier; dynamicSize?: SizeTier } {
+  if (bpl === "auto") return {}
+  if (bpl <= 4) return {}
+  // bpl 5-6 → drop one tier; 7-8 → drop two; 9+ → drop three (clamped at sm)
+  const steps = bpl >= 9 ? 3 : bpl >= 7 ? 2 : 1
+  return {
+    chordSize: stepDown(base.chordSize, steps),
+    lyricSize: stepDown(base.lyricSize, steps),
+    dynamicSize: stepDown(base.dynamicSize, steps),
+  }
+}
+
+// ── Preview page sub-component ────────────────────────────────────────
+
+interface PreviewPageProps {
+  page: PageSpec
+  totalPages: number
+  layout: import("@/lib/layout/types").LayoutResult
+  chartHeaderHeight: number
+  paperWPt: number
+  paperHPt: number
+  marginPt: number
+  contentWidthPt: number
+  subsequentHeaderPt: number
+  previewScale: number
+  title: string
+  copyright: string
+  fontConfigOverride: Partial<import("@/lib/fonts").FontConfig>
+}
+
+function PreviewPage({
+  page,
+  totalPages,
+  layout,
+  chartHeaderHeight,
+  paperWPt,
+  paperHPt,
+  marginPt,
+  contentWidthPt,
+  subsequentHeaderPt,
+  previewScale,
+  title,
+  copyright,
+  fontConfigOverride,
+}: PreviewPageProps) {
+  // Which chart-line indices show on this page
+  const isFirstPage = page.pageNum === 1
+  const firstLineInPage = layout.lines[page.startLine]
+  // y offset of the first visible line relative to the TOP of the chart SVG
+  // (chart header + line.y within body group).
+  const bodyTopY = chartHeaderHeight + (firstLineInPage?.y ?? 0)
+
+  // How much vertical space the per-page header consumes inside the
+  // page-content area. On page 1 this is the full chart title header
+  // (already part of the source SVG). On pages 2+ we draw our own
+  // compact header overlay.
+  const pageContentTopY = isFirstPage ? 0 : bodyTopY - subsequentHeaderPt
+
+  const contentHeightPt = paperHPt - 2 * marginPt
+
+  const pageW = paperWPt * previewScale
+  const pageH = paperHPt * previewScale
+
+  return (
+    <div
+      className="preview-page relative bg-white shadow-md"
+      style={{ width: pageW, height: pageH, flexShrink: 0 }}
+    >
+      {/* Content window (margin-boxed) */}
+      <div
+        className="preview-page-content absolute overflow-hidden"
+        style={{
+          left: marginPt * previewScale,
+          top: marginPt * previewScale,
+          width: contentWidthPt * previewScale,
+          height: contentHeightPt * previewScale,
+        }}
+      >
+        {/* Cropped ChartSVG — render another instance scaled, translated
+            so the right vertical slice lines up within the content box. */}
+        <div
+          className="preview-page-scaler"
+          style={{
+            position: "absolute",
+            left: 0,
+            top: -pageContentTopY * previewScale,
+            width: contentWidthPt * previewScale,
+            transform: `scale(${previewScale})`,
+            transformOrigin: "top left",
+          }}
+        >
+          <div style={{ width: contentWidthPt }}>
+            <ChartSVG
+              layout={layout}
+              containerWidth={contentWidthPt}
+              fontConfigOverride={fontConfigOverride}
+            />
+          </div>
+        </div>
+
+        {/* Page 2+ header overlay: page num top-left, title top-right */}
+        {!isFirstPage && (
+          <>
+            <div
+              className="preview-page-num absolute text-muted-foreground"
+              style={{
+                left: 0,
+                top: 2 * previewScale,
+                fontSize: Math.max(7, 10 * previewScale),
+                fontFamily: "Inter, system-ui, sans-serif",
+                opacity: 0.7,
+              }}
+            >
+              {page.pageNum} / {totalPages}
+            </div>
+            <div
+              className="preview-page-title-repeat absolute text-foreground"
+              style={{
+                right: 0,
+                top: 2 * previewScale,
+                fontSize: Math.max(8, 11 * previewScale),
+                fontFamily: "PetalumaScript, serif",
+                fontWeight: 700,
+                opacity: 0.75,
+              }}
+            >
+              {title}
+            </div>
+          </>
+        )}
+
+        {/* Footer overlay: copyright + "Created at chordee.app" */}
+        {copyright.trim() && (
+          <div
+            className="preview-footer-copyright absolute text-muted-foreground text-center"
+            style={{
+              left: 0,
+              right: 0,
+              bottom: 22 * previewScale,
+              fontSize: Math.max(7, 9 * previewScale),
+              fontFamily: "Inter, system-ui, sans-serif",
+              opacity: 0.6,
+            }}
+          >
+            {copyright}
+          </div>
+        )}
+        <div
+          className="preview-footer-chordee absolute text-muted-foreground text-center inline-flex items-center justify-center gap-1"
+          style={{
+            left: 0,
+            right: 0,
+            bottom: 4 * previewScale,
+            fontSize: Math.max(7, 9 * previewScale),
+            fontFamily: "PetalumaText, serif",
+            opacity: 0.6,
+          }}
+        >
+          <img
+            src="/CHORDEE.png"
+            alt=""
+            style={{ height: Math.max(8, 10 * previewScale), width: "auto" }}
+            draggable={false}
+          />
+          <span>· Created at chordee.app</span>
+        </div>
+      </div>
+
+      {/* Margin outline */}
+      <div
+        className="preview-margin-outline pointer-events-none absolute border border-dashed border-neutral-300"
+        style={{
+          left: marginPt * previewScale,
+          top: marginPt * previewScale,
+          width: contentWidthPt * previewScale,
+          height: (paperHPt - 2 * marginPt) * previewScale,
+        }}
+      />
+
+      {/* Page badge */}
+      <div
+        className="preview-page-badge absolute top-2 left-2 text-[9px] text-muted-foreground bg-background/80 rounded px-1 py-0.5"
+        style={{ pointerEvents: "none" }}
+      >
+        Page {page.pageNum} of {totalPages}
+      </div>
+    </div>
+  )
+}
+
 export function PdfExportDialog({ open, onOpenChange }: PdfExportDialogProps) {
   const meta = useChartStore((s) => s.chart.meta)
   const storeBpl = useChartStore((s) => s.chart.meta.measuresPerLine)
   const storeBplMode = useChartStore((s) => s.ui.measuresPerLineMode)
   const storeJustification = useChartStore((s) => s.ui.justificationStrategy)
+  const baseChordSize = useChartStore((s) => s.ui.fontConfig.chordSize)
+  const baseLyricSize = useChartStore((s) => s.ui.fontConfig.lyricSize)
+  const baseDynamicSize = useChartStore((s) => s.ui.fontConfig.dynamicSize)
+  const baseHeadingSize = useChartStore((s) => s.ui.fontConfig.headingSize)
+  const baseSubtitleSize = useChartStore((s) => s.ui.fontConfig.subtitleSize)
+  const baseBodySize = useChartStore((s) => s.ui.fontConfig.bodySize)
 
   const [paperSize, setPaperSize] = useState<PaperSize>(() => detectDefaultPaper())
   const [orientation, setOrientation] = useState<Orientation>("portrait")
@@ -80,12 +294,60 @@ export function PdfExportDialog({ open, onOpenChange }: PdfExportDialogProps) {
   const marginPt = marginIn * 72
   const contentWidthPt = Math.max(72, paperWPt - 2 * marginPt)
 
+  // Font-scale override derived from bpl. Empty object for auto/<=4 bars.
+  const fontConfigOverride = useMemo(
+    () =>
+      computeFontScaleOverride(bpl, {
+        chordSize: baseChordSize as SizeTier,
+        lyricSize: baseLyricSize as SizeTier,
+        dynamicSize: baseDynamicSize as SizeTier,
+      }),
+    [bpl, baseChordSize, baseLyricSize, baseDynamicSize],
+  )
+
   // Compute layout with paper-derived width + user overrides
   const layout = useChartLayout(contentWidthPt, {
     containerWidth: contentWidthPt,
     measuresPerLine: bpl,
     justification,
+    fontConfigOverride,
   })
+
+  // Chart title header height — must mirror the formula in ChartSVG.tsx.
+  const chartHeaderHeight = useMemo(() => {
+    if (!meta.title) return 0
+    const headingScale = RELATIVE_SIZE_SCALE[baseHeadingSize as RelativeSize] ?? 1
+    const subtitleScale = RELATIVE_SIZE_SCALE[baseSubtitleSize as RelativeSize] ?? 1
+    const bodyScaleLocal = RELATIVE_SIZE_SCALE[baseBodySize as RelativeSize] ?? 1
+    const titleFontSize = Math.round(24 * headingScale)
+    const subtitleFontSize = Math.round(14 * subtitleScale)
+    const infoFontSize = Math.round(13 * bodyScaleLocal)
+    const hasSubtitle = !!meta.subtitle
+    return Math.round(
+      40 + titleFontSize + (hasSubtitle ? subtitleFontSize + 4 : 0) + infoFontSize,
+    )
+  }, [meta.title, meta.subtitle, baseHeadingSize, baseSubtitleSize, baseBodySize])
+
+  const geometry = useMemo(
+    () =>
+      computePageGeometry(
+        paperSize,
+        orientation,
+        marginPt,
+        chartHeaderHeight,
+        !!copyright.trim(),
+      ),
+    [paperSize, orientation, marginPt, chartHeaderHeight, copyright],
+  )
+
+  const pages: PageSpec[] = useMemo(() => {
+    if (!layout) return []
+    return paginate(
+      layout,
+      geometry.firstPageContentH,
+      geometry.subsequentPageContentH,
+    )
+  }, [layout, geometry.firstPageContentH, geometry.subsequentPageContentH])
 
   // Reference to the hidden ChartSVG for grabbing DOM on export
   const hiddenSvgHostRef = useRef<HTMLDivElement>(null)
@@ -133,8 +395,7 @@ export function PdfExportDialog({ open, onOpenChange }: PdfExportDialogProps) {
     }
   }
 
-  // Preview pane sizing — measure available space and scale the real-size
-  // SVG to fit the whole page with a small margin around it.
+  // Preview pane sizing — measure available space.
   const previewScrollRef = useRef<HTMLDivElement>(null)
   const [previewBox, setPreviewBox] = useState({ w: 0, h: 0 })
   useLayoutEffect(() => {
@@ -151,10 +412,16 @@ export function PdfExportDialog({ open, onOpenChange }: PdfExportDialogProps) {
     return () => ro.disconnect()
   }, [open])
 
-  const PADDING = 24 // breathing room inside preview-scroll
+  // Fit scale: always fit a single page to width, and also to height when
+  // we only have 1 page. For multi-page we fit to width and let the stack
+  // scroll vertically inside preview-scroll.
+  const PADDING = 24
   const availW = Math.max(1, previewBox.w - PADDING)
   const availH = Math.max(1, previewBox.h - PADDING)
-  const fitScale = Math.min(availW / paperWPt, availH / paperHPt)
+  const fitScale =
+    pages.length <= 1
+      ? Math.min(availW / paperWPt, availH / paperHPt)
+      : availW / paperWPt
   const previewScale = zoom100 ? 1 : (previewBox.w > 0 ? fitScale : 0.6)
 
   return (
@@ -294,50 +561,59 @@ export function PdfExportDialog({ open, onOpenChange }: PdfExportDialogProps) {
             <div
               ref={previewScrollRef}
               className={`preview-scroll relative min-h-0 flex-1 rounded-md border bg-neutral-100 dark:bg-neutral-900 ${
-                zoom100 ? "overflow-auto" : "overflow-hidden"
+                pages.length > 1 || zoom100 ? "overflow-auto" : "overflow-hidden"
               }`}
             >
+              {/* Hidden host: full chart SVG at natural size, used both as
+                  the source for rasterization on export and as the visual
+                  source for per-page cropped previews via CSS. */}
               <div
-                className="preview-page-wrap absolute inset-0 flex items-center justify-center"
-              >
-              <div
-                className="preview-page relative bg-white shadow-md"
+                ref={hiddenSvgHostRef}
+                className="preview-svg-host-hidden"
                 style={{
-                  width: paperWPt * previewScale,
-                  height: paperHPt * previewScale,
+                  position: "absolute",
+                  left: "-99999px",
+                  top: "-99999px",
+                  width: contentWidthPt,
                 }}
               >
-                {/* Scaled chart SVG, clipped to page */}
-                <div
-                  className="preview-scaler absolute"
-                  style={{
-                    left: marginPt * previewScale,
-                    top: marginPt * previewScale,
-                    transform: `scale(${previewScale})`,
-                    transformOrigin: "top left",
-                  }}
-                >
-                  <div
-                    ref={hiddenSvgHostRef}
-                    className="preview-svg-host text-black"
-                    style={{ width: contentWidthPt }}
-                  >
-                    {layout && (
-                      <ChartSVG layout={layout} containerWidth={contentWidthPt} />
-                    )}
-                  </div>
-                </div>
-                {/* Margin outline */}
-                <div
-                  className="preview-margin-outline pointer-events-none absolute border border-dashed border-neutral-300"
-                  style={{
-                    left: marginPt * previewScale,
-                    top: marginPt * previewScale,
-                    width: contentWidthPt * previewScale,
-                    height: (paperHPt - 2 * marginPt) * previewScale,
-                  }}
-                />
+                {layout && (
+                  <ChartSVG
+                    layout={layout}
+                    containerWidth={contentWidthPt}
+                    fontConfigOverride={fontConfigOverride}
+                  />
+                )}
               </div>
+
+              <div
+                className="preview-pages-stack flex flex-col items-center gap-4 p-4"
+                style={{ minHeight: "100%" }}
+              >
+                {pages.length === 0 || !layout ? (
+                  <div className="text-xs text-muted-foreground">
+                    {layout ? "Empty chart" : "Computing layout…"}
+                  </div>
+                ) : (
+                  pages.map((page) => (
+                    <PreviewPage
+                      key={page.pageNum}
+                      page={page}
+                      totalPages={pages.length}
+                      layout={layout}
+                      chartHeaderHeight={chartHeaderHeight}
+                      paperWPt={paperWPt}
+                      paperHPt={paperHPt}
+                      marginPt={marginPt}
+                      contentWidthPt={contentWidthPt}
+                      subsequentHeaderPt={geometry.subsequentHeaderPt}
+                      previewScale={previewScale}
+                      title={meta.title || "Chord Chart"}
+                      copyright={copyright}
+                      fontConfigOverride={fontConfigOverride}
+                    />
+                  ))
+                )}
               </div>
             </div>
           </div>

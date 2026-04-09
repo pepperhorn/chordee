@@ -1,5 +1,5 @@
-import { useChartStore } from "@/lib/store"
 import { RELATIVE_SIZE_SCALE } from "@/lib/fonts"
+import { useFontConfigField } from "@/lib/fontConfigContext"
 import {
   CLEF_GLYPHS,
   ACCIDENTAL_GLYPHS,
@@ -30,9 +30,9 @@ export function ClefKeySignature({
   showClef,
   showKeySig,
 }: ClefKeySignatureProps) {
-  const clefFont = useChartStore((s) => s.ui.fontConfig.clef)
-  const clefSize = useChartStore((s) => s.ui.fontConfig.clefSize)
-  const clefColor = useChartStore((s) => s.ui.fontConfig.clefColor)
+  const clefFont = useFontConfigField("clef")
+  const clefSize = useFontConfigField("clefSize")
+  const clefColor = useFontConfigField("clefColor")
 
   if (!showClef && !showKeySig) return null
 

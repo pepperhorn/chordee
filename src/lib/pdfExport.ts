@@ -1,4 +1,5 @@
-import { PDFDocument } from "pdf-lib"
+import { PDFDocument, rgb, StandardFonts, PDFName, PDFString, PDFArray } from "pdf-lib"
+import QRCode from "qrcode"
 import type { LayoutResult } from "./layout/types"
 
 // ── Paper sizes in PostScript points (1pt = 1/72 inch) ─────────────────
@@ -28,6 +29,51 @@ export function paperDimsPt(size: PaperSize, orient: Orientation) {
   return orient === "portrait"
     ? { width: base.width, height: base.height }
     : { width: base.height, height: base.width }
+}
+
+export interface PageGeometry {
+  paperWidthPt: number
+  paperHeightPt: number
+  marginPt: number
+  contentWidthPt: number
+  contentHeightPt: number
+  footerPt: number
+  subsequentHeaderPt: number
+  firstPageContentH: number
+  subsequentPageContentH: number
+}
+
+/** Computes all the page-geometry numbers used by both the exporter and the
+ *  live preview so they stay in sync. `chartHeaderHeight` is the height of
+ *  the chart's own title header (only rendered on page 1). */
+export function computePageGeometry(
+  paperSize: PaperSize,
+  orientation: Orientation,
+  marginPt: number,
+  chartHeaderHeight: number,
+  hasCopyright: boolean,
+): PageGeometry {
+  const { width: paperWidthPt, height: paperHeightPt } = paperDimsPt(
+    paperSize,
+    orientation,
+  )
+  const contentWidthPt = paperWidthPt - 2 * marginPt
+  const contentHeightPt = paperHeightPt - 2 * marginPt
+  const footerPt = hasCopyright ? 30 : 18
+  const subsequentHeaderPt = 28
+  const firstPageContentH = contentHeightPt - chartHeaderHeight - footerPt
+  const subsequentPageContentH = contentHeightPt - subsequentHeaderPt - footerPt
+  return {
+    paperWidthPt,
+    paperHeightPt,
+    marginPt,
+    contentWidthPt,
+    contentHeightPt,
+    footerPt,
+    subsequentHeaderPt,
+    firstPageContentH,
+    subsequentPageContentH,
+  }
 }
 
 // ── Font embedding ─────────────────────────────────────────────────────
@@ -106,13 +152,13 @@ async function svgStringToPngBytes(
 
 // ── Pagination ─────────────────────────────────────────────────────────
 
-interface PageSpec {
+export interface PageSpec {
   pageNum: number
   startLine: number
   endLine: number // exclusive
 }
 
-function paginate(
+export function paginate(
   layout: LayoutResult,
   firstPageContentH: number,
   subsequentPageContentH: number,
@@ -301,26 +347,11 @@ function buildPageSvg({
   }
   content.appendChild(body)
 
-  // Footer
+  // Footer: copyright drawn in the SVG; the chordee brand line (logo + text
+  // + QR + clickable link) is drawn as pdf-lib vector overlay after the
+  // raster page image is embedded. That keeps the URL clickable.
   const contentHeightPt = paperHeightPt - 2 * marginPt
   const footerTop = contentHeightPt - footerPt
-
-  // "Created at chordee.app" is intentionally hardcoded and non-removable.
-  // Future: gate removal behind a paid sub-feature. Do NOT expose an option
-  // to disable this via PdfExportOptions without that gate in place.
-  const chordeeY = contentHeightPt - 4
-  const chordeeText = createSvgText(
-    contentWidthPt / 2,
-    chordeeY,
-    "Created at chordee.app",
-    9,
-    {
-      anchor: "middle",
-      fontFamily: `PetalumaText, serif`,
-      opacity: 0.6,
-    },
-  )
-  content.appendChild(chordeeText)
 
   if (opts.copyright) {
     const copyText = createSvgText(
@@ -334,6 +365,29 @@ function buildPageSvg({
   }
 
   return new XMLSerializer().serializeToString(svg)
+}
+
+// ── Overlay assets (logo + QR) ─────────────────────────────────────────
+
+async function fetchPngBytes(url: string): Promise<Uint8Array> {
+  const resp = await fetch(url)
+  const buf = await resp.arrayBuffer()
+  return new Uint8Array(buf)
+}
+
+async function generateChordeeQrBytes(url: string): Promise<Uint8Array> {
+  // Render QR to a PNG data URL at modest resolution then extract bytes.
+  const dataUrl = await QRCode.toDataURL(url, {
+    width: 200,
+    margin: 0,
+    color: { dark: "#000000ff", light: "#ffffffff" },
+    errorCorrectionLevel: "M",
+  })
+  const base64 = dataUrl.split(",")[1] ?? ""
+  const bin = atob(base64)
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  return bytes
 }
 
 // ── Public entry point ────────────────────────────────────────────────
@@ -385,6 +439,23 @@ export async function exportChartToPdf(args: {
   pdfDoc.setProducer("chordee (pdf-lib)")
   pdfDoc.setCreationDate(new Date())
 
+  // Brand overlay assets (logo, QR, link font) — loaded once for the doc.
+  const CHORDEE_URL = "https://chordee.app"
+  const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
+  let logoPng: import("pdf-lib").PDFImage | null = null
+  let qrPng: import("pdf-lib").PDFImage | null = null
+  try {
+    const [logoBytes, qrBytes] = await Promise.all([
+      fetchPngBytes("/CHORDEE.png"),
+      generateChordeeQrBytes(CHORDEE_URL),
+    ])
+    logoPng = await pdfDoc.embedPng(logoBytes)
+    qrPng = await pdfDoc.embedPng(qrBytes)
+  } catch (e) {
+    // Logo/QR are non-essential; continue without if anything fails.
+    console.warn("Failed to load brand overlay assets:", e)
+  }
+
   const pixelRatio = 3
 
   for (const page of pages) {
@@ -418,6 +489,99 @@ export async function exportChartToPdf(args: {
       width: paperWidthPt,
       height: paperHeightPt,
     })
+
+    // ── Brand overlay: logo + clickable chordee.app + QR ──────────────
+    // NOTE: pdf-lib uses a bottom-up coordinate system (y=0 at bottom).
+    //
+    // Footer strip is positioned just inside the bottom margin.
+    const linkLabel = "Created at chordee.app"
+    const linkFontSize = 9
+    const logoHeight = 10
+    const gap = 4
+    const brandCenterY = marginPt / 2 + 3 // small lift from the very bottom
+
+    // Measure widths (logo aspect ratio ~5:1 like the 200x40 source)
+    const logoWidth = logoPng ? (logoPng.width / logoPng.height) * logoHeight : 0
+    const labelWidth = helveticaFont.widthOfTextAtSize(linkLabel, linkFontSize)
+    const separatorWidth = helveticaFont.widthOfTextAtSize(" · ", linkFontSize)
+    const groupWidth = logoWidth + (logoWidth > 0 ? gap : 0) + separatorWidth + labelWidth
+    const groupX = (paperWidthPt - groupWidth) / 2
+
+    if (logoPng) {
+      pdfPage.drawImage(logoPng, {
+        x: groupX,
+        y: brandCenterY - logoHeight / 2,
+        width: logoWidth,
+        height: logoHeight,
+      })
+    }
+
+    const sepX = groupX + logoWidth + (logoWidth > 0 ? gap : 0)
+    pdfPage.drawText(" · ", {
+      x: sepX,
+      y: brandCenterY - linkFontSize / 2 + 1,
+      size: linkFontSize,
+      font: helveticaFont,
+      color: rgb(0.35, 0.35, 0.35),
+    })
+
+    const labelX = sepX + separatorWidth
+    pdfPage.drawText(linkLabel, {
+      x: labelX,
+      y: brandCenterY - linkFontSize / 2 + 1,
+      size: linkFontSize,
+      font: helveticaFont,
+      color: rgb(0.1, 0.3, 0.7),
+    })
+
+    // Clickable URI annotation over the link label text
+    const linkRect = [
+      labelX - 1,
+      brandCenterY - linkFontSize / 2 - 1,
+      labelX + labelWidth + 1,
+      brandCenterY + linkFontSize / 2 + 2,
+    ]
+    const linkAnnot = pdfDoc.context.obj({
+      Type: "Annot",
+      Subtype: "Link",
+      Rect: linkRect,
+      Border: [0, 0, 0],
+      A: {
+        Type: "Action",
+        S: "URI",
+        URI: PDFString.of(CHORDEE_URL),
+      },
+    })
+    const existing = pdfPage.node.get(PDFName.of("Annots"))
+    if (existing instanceof PDFArray) {
+      existing.push(linkAnnot)
+    } else {
+      pdfPage.node.set(
+        PDFName.of("Annots"),
+        pdfDoc.context.obj([linkAnnot]),
+      )
+    }
+
+    // QR code — bottom-right corner, inside margin
+    if (qrPng) {
+      const qrSize = 40
+      pdfPage.drawImage(qrPng, {
+        x: paperWidthPt - marginPt - qrSize,
+        y: marginPt,
+        width: qrSize,
+        height: qrSize,
+      })
+      // Label below the QR
+      const qrLabel = "chordee.app"
+      const qrLabelW = helveticaFont.widthOfTextAtSize(qrLabel, 7)
+      pdfPage.drawText(qrLabel, {
+        x: paperWidthPt - marginPt - qrSize + (qrSize - qrLabelW) / 2,
+        y: marginPt - 8,
+        size: 7,
+        font: helveticaFont,
+        color: rgb(0.35, 0.35, 0.35),
+      })
+    }
   }
 
   const bytes = await pdfDoc.save()

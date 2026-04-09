@@ -3,6 +3,7 @@ import { BarGroup } from "./BarGroup"
 import { SectionHeader } from "./SectionHeader"
 import { useChartStore } from "@/lib/store"
 import { RELATIVE_SIZE_SCALE, type FontConfig } from "@/lib/fonts"
+import { FontConfigOverrideProvider } from "@/lib/fontConfigContext"
 
 interface ChartSVGProps {
   layout: LayoutResult
@@ -73,6 +74,7 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
   const totalH = layout.totalHeight + headerH + copyrightBlockH
 
   return (
+    <FontConfigOverrideProvider value={fontConfigOverride ?? null}>
     <svg
       id="chart-area"
       className="chart-svg"
@@ -206,5 +208,6 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
         </text>
       )}
     </svg>
+    </FontConfigOverrideProvider>
   )
 }

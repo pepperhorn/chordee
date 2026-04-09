@@ -1,5 +1,5 @@
-import { useChartStore } from "@/lib/store"
 import { RELATIVE_SIZE_SCALE } from "@/lib/fonts"
+import { useFontConfigField } from "@/lib/fontConfigContext"
 
 interface ChordSymbolProps {
   text: string
@@ -11,9 +11,9 @@ interface ChordSymbolProps {
 const BASE_CHORD_FONT_SIZE = 18
 
 export function ChordSymbol({ text, x, y, centered = false }: ChordSymbolProps) {
-  const chordFont = useChartStore((s) => s.ui.fontConfig.chord)
-  const chordSize = useChartStore((s) => s.ui.fontConfig.chordSize)
-  const chordColor = useChartStore((s) => s.ui.fontConfig.chordColor)
+  const chordFont = useFontConfigField("chord")
+  const chordSize = useFontConfigField("chordSize")
+  const chordColor = useFontConfigField("chordColor")
 
   const scale = RELATIVE_SIZE_SCALE[chordSize] ?? 1
   const fontSize = Math.round(BASE_CHORD_FONT_SIZE * scale)

@@ -53,75 +53,75 @@ export function ChartContainer() {
 
   return (
     <div
-      ref={containerRef}
-      className={`chart-container chart-container--${theme} relative flex-1 overflow-auto text-slate-900`}
-      data-zoom={zoom}
+      className={`chart-container-wrap chart-container-wrap--${theme} relative flex flex-1 flex-col text-slate-900`}
       style={{ backgroundColor: bgColor || "#ffffff", minHeight: 0 }}
     >
       <div
-        className="chart-zoom-wrapper origin-top-left"
-        style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top left" }}
+        ref={containerRef}
+        className="chart-container relative flex-1 overflow-auto"
+        data-zoom={zoom}
+        style={{ minHeight: 0 }}
       >
-        {layout && layoutWidth > 0 && (
-          <>
-            <ChartSVG layout={layout} containerWidth={layoutWidth} />
-            <ChordInput layout={layout} />
-            <DynamicInput layout={layout} />
-            {activeInput === "timesig" && selection?.sectionId && pickerAnchor && (
-              <TimeSigPicker
-                sectionId={selection.sectionId}
-                onClose={() => setActiveInput("none")}
-                anchorX={pickerAnchor.x}
-                anchorY={pickerAnchor.y}
-              />
-            )}
-            {activeInput === "keysig" && pickerAnchor && (
-              <KeySigPicker
-                onClose={() => setActiveInput("none")}
-                anchorX={pickerAnchor.x}
-                anchorY={pickerAnchor.y}
-              />
-            )}
-          </>
+        <div
+          className="chart-zoom-wrapper origin-top-left"
+          style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top left" }}
+        >
+          {layout && layoutWidth > 0 && (
+            <>
+              <ChartSVG layout={layout} containerWidth={layoutWidth} />
+              <ChordInput layout={layout} />
+              <DynamicInput layout={layout} />
+              {activeInput === "timesig" && selection?.sectionId && pickerAnchor && (
+                <TimeSigPicker
+                  sectionId={selection.sectionId}
+                  onClose={() => setActiveInput("none")}
+                  anchorX={pickerAnchor.x}
+                  anchorY={pickerAnchor.y}
+                />
+              )}
+              {activeInput === "keysig" && pickerAnchor && (
+                <KeySigPicker
+                  onClose={() => setActiveInput("none")}
+                  anchorX={pickerAnchor.x}
+                  anchorY={pickerAnchor.y}
+                />
+              )}
+            </>
+          )}
+        </div>
+        {getPaperOverlayStyle(paperTexture) && (
+          <div
+            className="paper-overlay"
+            style={{
+              ...getPaperOverlayStyle(paperTexture)!,
+              position: "sticky",
+              bottom: 0,
+              left: 0,
+              width: "100%",
+              height: "100vh",
+              marginTop: "-100vh",
+            }}
+          />
         )}
       </div>
-      {getPaperOverlayStyle(paperTexture) && (
-        <div
-          className="paper-overlay"
-          style={{
-            ...getPaperOverlayStyle(paperTexture)!,
-            position: "sticky",
-            bottom: 0,
-            left: 0,
-            width: "100%",
-            height: "100vh",
-            marginTop: "-100vh",
-          }}
-        />
-      )}
-      {/* About / credits button — desktop only, sticky bottom-left of the chart viewport */}
-      <div
-        className="chart-about-sticky pointer-events-none sticky bottom-0 left-0 z-20 flex max-md:hidden"
-        style={{ marginTop: "-64px", paddingBottom: "30px", paddingLeft: "16px", height: 0 }}
-      >
-        <button
-          type="button"
-          className="chart-about-btn pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background/80 text-muted-foreground shadow-sm backdrop-blur-sm hover:bg-background hover:text-foreground"
-          onClick={() => setAboutOpen(true)}
-          aria-label="About chordee"
-          title="About chordee"
-          style={{ marginTop: "14px" }}
-        >
-          <Info className="h-4 w-4" />
-        </button>
-      </div>
 
-      {/* Floating brand footer — desktop only, sticky to the bottom of the chart
-          scroll viewport so it tracks the chart area as the sidebar opens/closes
-          and stays in shot when scrolling. Mirrors the chart heading treatment. */}
+      {/* About / credits button — desktop only, absolutely pinned to the
+          bottom-left of the chart container (outside the scroll area so it
+          always sits at the visible bottom regardless of content length). */}
+      <button
+        type="button"
+        className="chart-about-btn pointer-events-auto absolute bottom-[30px] left-4 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background/80 text-muted-foreground shadow-sm backdrop-blur-sm hover:bg-background hover:text-foreground max-md:hidden"
+        onClick={() => setAboutOpen(true)}
+        aria-label="About chordee"
+        title="About chordee"
+      >
+        <Info className="h-4 w-4" />
+      </button>
+
+      {/* Floating brand footer — desktop only, absolutely pinned at the bottom
+          of the chart container (outside the scroll area). */}
       <div
-        className="chart-brand-footer pointer-events-none sticky bottom-0 left-0 z-20 flex items-center justify-center gap-2 max-md:hidden"
-        style={{ marginTop: "-64px", paddingBottom: "30px", width: "100%" }}
+        className="chart-brand-footer pointer-events-none absolute bottom-[30px] left-0 right-0 z-20 flex items-center justify-center gap-2 max-md:hidden"
         aria-hidden="true"
       >
         <img

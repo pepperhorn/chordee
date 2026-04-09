@@ -5,6 +5,7 @@ import { TimeSignatureDisplay } from "./TimeSignatureDisplay"
 import { ClefKeySignature } from "./ClefKeySignature"
 import { useChartStore } from "@/lib/store"
 import { RELATIVE_SIZE_SCALE } from "@/lib/fonts"
+import { useFontConfigField } from "@/lib/fontConfigContext"
 import { estimateClefKeySigWidth } from "@/lib/keySignature"
 
 interface BarGroupProps {
@@ -21,8 +22,8 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
   const clef = useChartStore((s) => s.chart.meta.clef)
   const showClefSetting = useChartStore((s) => s.chart.meta.showClef ?? true)
   const chartKey = useChartStore((s) => s.chart.meta.key)
-  const clefSize = useChartStore((s) => s.ui.fontConfig.clefSize)
-  const chordScale = RELATIVE_SIZE_SCALE[useChartStore((s) => s.ui.fontConfig.chordSize)] ?? 1
+  const clefSize = useFontConfigField("clefSize")
+  const chordScale = RELATIVE_SIZE_SCALE[useFontConfigField("chordSize")] ?? 1
   const clefScale = RELATIVE_SIZE_SCALE[clefSize] ?? 1
   const staveY = Math.round(14 * chordScale) + 6
 

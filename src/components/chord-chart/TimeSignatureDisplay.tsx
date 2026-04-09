@@ -1,5 +1,5 @@
-import { useChartStore } from "@/lib/store"
 import { RELATIVE_SIZE_SCALE } from "@/lib/fonts"
+import { useFontConfigField } from "@/lib/fontConfigContext"
 
 interface TimeSignatureDisplayProps {
   beats: number
@@ -18,9 +18,9 @@ export function TimeSignatureDisplay({
   y,
   height,
 }: TimeSignatureDisplayProps) {
-  const tsFont = useChartStore((s) => s.ui.fontConfig.timeSignature)
-  const tsSize = useChartStore((s) => s.ui.fontConfig.timeSignatureSize)
-  const tsColor = useChartStore((s) => s.ui.fontConfig.timeSignatureColor)
+  const tsFont = useFontConfigField("timeSignature")
+  const tsSize = useFontConfigField("timeSignatureSize")
+  const tsColor = useFontConfigField("timeSignatureColor")
 
   const scale = RELATIVE_SIZE_SCALE[tsSize] ?? 1
   const fontSize = BASE_FONT_SIZE * scale
