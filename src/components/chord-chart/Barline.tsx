@@ -10,11 +10,13 @@ const BARLINE_GLYPHS: Record<string, string> = {
   repeatEnd: "\uE041",
 }
 
-// Repeat barlines look better when bumped a bit larger so the dots read.
+// Single/double/final bumped to 1.3 so the double barline's interior gap
+// reads cleanly at screen sizes. Repeat signs stay a touch larger so the
+// bullet dots pop.
 const BARLINE_SIZE_MULTIPLIER: Record<string, number> = {
-  single: 1.0,
-  double: 1.0,
-  final: 1.05,
+  single: 1.3,
+  double: 1.3,
+  final: 1.3,
   repeatStart: 1.4,
   repeatEnd: 1.4,
 }
@@ -55,8 +57,14 @@ export function Barline({ style, x, height, yOffset, onCycle }: BarlineProps) {
     baseFontSize * scale * (BARLINE_SIZE_MULTIPLIER[style] ?? 1)
   const glyph = BARLINE_GLYPHS[style] ?? BARLINE_GLYPHS.single
 
-  // Center the glyph vertically on the staff midline.
-  const cy = y + height / 2
+  // SMuFL barline glyphs have their alphabetic baseline at the south staff
+  // line and extend upward by ~1em (= 4 staff spaces = staff height). With
+  // the default alphabetic baseline, placing y at "staff midline + fontSize/2"
+  // puts the glyph's visual center exactly on the staff midline, which is
+  // where the slash noteheads sit. This stays correct regardless of the
+  // size multiplier.
+  const visualCenterY = y + height / 2
+  const baselineY = visualCenterY + fontSize / 2
 
   return (
     <g
@@ -84,9 +92,8 @@ export function Barline({ style, x, height, yOffset, onCycle }: BarlineProps) {
       <text
         className="barline-glyph"
         x={x}
-        y={cy}
+        y={baselineY}
         textAnchor="middle"
-        dominantBaseline="middle"
         fontSize={fontSize}
         fontFamily={`${barlineFont}, Petaluma, Bravura, serif`}
         fill={barlineColor ?? "currentColor"}

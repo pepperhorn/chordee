@@ -53,7 +53,7 @@ export function ChartContainer() {
 
   return (
     <div
-      className={`chart-container-wrap chart-container-wrap--${theme} relative flex flex-1 flex-col text-slate-900`}
+      className={`chart-container-wrap chart-container-wrap--${theme} relative flex min-w-0 flex-1 flex-col text-slate-900`}
       style={{ backgroundColor: bgColor || "#ffffff", minHeight: 0 }}
     >
       <div

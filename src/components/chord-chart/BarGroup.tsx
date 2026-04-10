@@ -6,7 +6,12 @@ import { ClefKeySignature } from "./ClefKeySignature"
 import { useChartStore } from "@/lib/store"
 import { useEffectiveScale } from "@/lib/fontConfigContext"
 import { estimateClefKeySigWidth } from "@/lib/keySignature"
-import { nextBarlineStyle } from "./Barline"
+import {
+  validBarlineStylesAt,
+  cycleBarlineStyle,
+  isUnclosedRepeatStart,
+} from "@/lib/barlineValidation"
+import type { Barline as BarlineStyle } from "@/lib/schema"
 
 interface BarGroupProps {
   bar: LayoutBar
@@ -15,6 +20,7 @@ interface BarGroupProps {
 
 export function BarGroup({ bar, lineY }: BarGroupProps) {
   const selection = useChartStore((s) => s.ui.selection)
+  const chart = useChartStore((s) => s.chart)
   const updateMeasure = useChartStore((s) => s.updateMeasure)
   const isSelected = selection?.measureId === bar.measureId
   const showSlashes = useChartStore((s) => s.ui.showSlashes)
@@ -24,14 +30,31 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
   const showClefSetting = useChartStore((s) => s.chart.meta.showClef ?? true)
   const chartKey = useChartStore((s) => s.chart.meta.key)
 
+  // "Don't forget to close this repeat" hint — only on the offending bar.
+  const startBarUnclosed =
+    bar.startBarline === "repeatStart" &&
+    isUnclosedRepeatStart(chart, bar.sectionId, bar.measureId, "start")
+  const endBarUnclosed =
+    bar.endBarline === "repeatStart" &&
+    isUnclosedRepeatStart(chart, bar.sectionId, bar.measureId, "end")
+
+  // Cycling enforces the no-nested-repeats rule: repeatStart is skipped
+  // when there's already an open repeat above this barline, and repeatEnd
+  // is skipped when there's no open repeat to close.
   const cycleStartBarline = () => {
+    const chart = useChartStore.getState().chart
+    const valid = validBarlineStylesAt(chart, bar.sectionId, bar.measureId, "start")
+    const current = (bar.startBarline ?? "single") as BarlineStyle
     updateMeasure(bar.sectionId, bar.measureId, {
-      barlineStart: nextBarlineStyle(bar.startBarline ?? "single"),
+      barlineStart: cycleBarlineStyle(current, valid),
     })
   }
   const cycleEndBarline = () => {
+    const chart = useChartStore.getState().chart
+    const valid = validBarlineStylesAt(chart, bar.sectionId, bar.measureId, "end")
+    const current = (bar.endBarline ?? "single") as BarlineStyle
     updateMeasure(bar.sectionId, bar.measureId, {
-      barlineEnd: nextBarlineStyle(bar.endBarline ?? "single"),
+      barlineEnd: cycleBarlineStyle(current, valid),
     })
   }
   const chordScale = useEffectiveScale("chordSize")
@@ -133,6 +156,26 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
           yOffset={staveY}
           onCycle={cycleEndBarline}
         />
+      )}
+
+      {/* Unclosed-repeat hint — sits just above the offending repeat start */}
+      {(startBarUnclosed || endBarUnclosed) && (
+        <g
+          className="barline-unclosed-hint"
+          pointerEvents="none"
+          transform={`translate(${startBarUnclosed ? 0 : bar.width}, ${staveY - 6})`}
+        >
+          <text
+            x={4}
+            y={0}
+            fontSize={10}
+            fontStyle="italic"
+            fill="hsl(var(--destructive))"
+            opacity={0.85}
+          >
+            ↳ don&apos;t forget to close this repeat
+          </text>
+        </g>
       )}
 
       {/* Whole rest */}
