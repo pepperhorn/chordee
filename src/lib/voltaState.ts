@@ -284,6 +284,180 @@ export function pruneOrphanedVoltas(chart: ChordChart): void {
   }
 }
 
+/**
+ * Mutating helper: reflow endings after a barline change so the cascade
+ * stays in sync with the current close-repeat layout.
+ *
+ * For each region:
+ *   1. Find the "anchors" — bars immediately after each close-repeat in
+ *      the region's ending zone (the region's own close + any cascading
+ *      closes after it, in chart order).
+ *   2. Find the existing voltas in chart order, partitioned into
+ *      inside-region (preserved as-is, the user's chosen "1st ending"
+ *      position) and outside-region (managed).
+ *   3. If there are FEWER outside voltas than anchors, fill the gap:
+ *      move existing outside voltas to the earliest anchors (preserving
+ *      labels) and add new voltas with the next-unused ordinal at the
+ *      trailing anchors. This is what the user described: dropping a
+ *      new close inside an existing ending should snap the ending,
+ *      shift the next ending forward, and pop a fresh ending at the end.
+ *
+ * Skipped scenarios (the user's intent isn't clear, so we leave alone):
+ *   - Region has no voltas at all
+ *   - Outside voltas already match or exceed the anchor count
+ *
+ * Only call this from mutations that change barline structure — never
+ * from generic chart edits, otherwise manually deleting an ending
+ * would trigger a confusing auto-add.
+ */
+export function reallocateEndings(chart: ChordChart): void {
+  const regions = findRepeatRegions(chart)
+  for (const region of regions) {
+    reallocateRegion(chart, region)
+  }
+}
+
+function reallocateRegion(chart: ChordChart, region: RepeatRegion): void {
+  // Flatten chart for index-based lookups.
+  const flat: Array<{ sectionId: string; measure: Measure }> = []
+  for (const section of chart.sections) {
+    for (const measure of section.measures) {
+      flat.push({ sectionId: section.id, measure })
+    }
+  }
+  const findIdx = (sectionId: string, measureId: string): number => {
+    for (let j = 0; j < flat.length; j++) {
+      if (
+        flat[j]!.sectionId === sectionId &&
+        flat[j]!.measure.id === measureId
+      )
+        return j
+    }
+    return -1
+  }
+  const regionEndIdx = findIdx(region.endSectionId, region.endMeasureId)
+  if (regionEndIdx === -1) return
+
+  // Walk the ending zone collecting anchors. Anchor 0 = bar right after
+  // the region's own close. Each subsequent close-right-edge in the
+  // zone contributes another anchor at its next bar.
+  const anchors: number[] = []
+  const firstAnchor = regionEndIdx + 1
+  if (
+    firstAnchor < flat.length &&
+    flat[firstAnchor]!.sectionId === region.endSectionId
+  ) {
+    anchors.push(firstAnchor)
+    for (let j = firstAnchor; j < flat.length; j++) {
+      if (flat[j]!.sectionId !== region.endSectionId) break
+      const m = flat[j]!.measure
+      if (m.barlineStart === "repeatStart" && m.repeatRegionId) break
+      const rightClose =
+        m.barlineEnd === "repeatEnd" ||
+        (j + 1 < flat.length &&
+          flat[j + 1]!.measure.barlineStart === "repeatEnd")
+      if (
+        rightClose &&
+        j + 1 < flat.length &&
+        flat[j + 1]!.sectionId === region.endSectionId
+      ) {
+        const nextIdx = j + 1
+        if (!anchors.includes(nextIdx)) anchors.push(nextIdx)
+      }
+    }
+  }
+
+  // Partition voltas into inside (preserved) and outside (managed).
+  const regionMeasureIds = new Set(region.measures.map((m) => m.measureId))
+  type VoltaEntry = {
+    idx: number
+    sectionId: string
+    measureId: string
+    volta: Volta
+  }
+  const insideVoltas: VoltaEntry[] = []
+  const outsideVoltas: VoltaEntry[] = []
+  for (let j = 0; j < flat.length; j++) {
+    const m = flat[j]!.measure
+    if (m.volta && m.volta.regionId === region.regionId) {
+      const entry: VoltaEntry = {
+        idx: j,
+        sectionId: flat[j]!.sectionId,
+        measureId: m.id,
+        volta: m.volta,
+      }
+      if (regionMeasureIds.has(m.id)) insideVoltas.push(entry)
+      else outsideVoltas.push(entry)
+    }
+  }
+
+  // No voltas at all → nothing to reflow.
+  if (insideVoltas.length === 0 && outsideVoltas.length === 0) return
+  // User has extra outside voltas beyond the anchor count → custom
+  // layout, leave alone.
+  if (outsideVoltas.length > anchors.length) return
+  // Already balanced AND every existing outside volta sits on an
+  // anchor → no action needed.
+  if (outsideVoltas.length === anchors.length) {
+    let allMatch = true
+    for (let i = 0; i < outsideVoltas.length; i++) {
+      if (outsideVoltas[i]!.idx !== anchors[i]) {
+        allMatch = false
+        break
+      }
+    }
+    if (allMatch) return
+  }
+
+  // Compute taken ordinals so new voltas pick the next-unused number.
+  const takenOrdinals = new Set<number>()
+  for (const v of [...insideVoltas, ...outsideVoltas]) {
+    for (const n of parseVoltaOrdinals(v.volta.label)) {
+      takenOrdinals.add(n)
+    }
+  }
+
+  // Build the target volta map (measureId → new volta) by walking
+  // anchors in order and pulling existing outside voltas into them.
+  const targetVoltas = new Map<string, Volta>()
+  for (let i = 0; i < anchors.length; i++) {
+    const anchorIdx = anchors[i]!
+    const anchorBar = flat[anchorIdx]!
+    const existing = outsideVoltas[i]
+    if (existing) {
+      targetVoltas.set(anchorBar.measure.id, existing.volta)
+    } else {
+      let n = 1
+      while (takenOrdinals.has(n)) n++
+      takenOrdinals.add(n)
+      const preset = presetForOrdinal(n)
+      targetVoltas.set(anchorBar.measure.id, {
+        regionId: region.regionId,
+        label: preset.label,
+        presetKey: preset.key,
+      })
+    }
+  }
+
+  // Apply the reflow: clear voltas from old positions that aren't being
+  // reused as targets, then write the targets. (Two-phase to handle
+  // moves where an old position becomes a different volta's new home.)
+  for (const v of outsideVoltas) {
+    if (!targetVoltas.has(v.measureId)) {
+      const section = chart.sections.find((s) => s.id === v.sectionId)
+      const measure = section?.measures.find((m) => m.id === v.measureId)
+      if (measure) delete (measure as Measure).volta
+    }
+  }
+  for (const [measureId, volta] of targetVoltas) {
+    const flatEntry = flat.find((f) => f.measure.id === measureId)
+    if (!flatEntry) continue
+    const section = chart.sections.find((s) => s.id === flatEntry.sectionId)
+    const measure = section?.measures.find((m) => m.id === measureId)
+    if (measure) measure.volta = volta
+  }
+}
+
 /** Build a Map<measureId, RepeatRegion> covering every bar that lies
  *  inside a region OR holds an "outside" closing ending (the bar
  *  immediately after the close-repeat). Computed once per chart by

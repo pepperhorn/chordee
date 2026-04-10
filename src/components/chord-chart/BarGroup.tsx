@@ -10,18 +10,14 @@ import {
 } from "@/lib/fontConfigContext"
 import { estimateClefKeySigWidth } from "@/lib/keySignature"
 import {
-  validBarlineStylesAt,
-  cycleBarlineStyle,
   isUnclosedRepeatStart,
   isOrphanedRepeatEnd,
 } from "@/lib/barlineValidation"
 import {
-  generateRepeatRegionId,
   useVoltaSlice,
   useRegionFor,
   type VoltaSlice,
 } from "@/lib/voltaState"
-import type { Barline as BarlineStyle } from "@/lib/schema"
 
 interface BarGroupProps {
   bar: LayoutBar
@@ -30,7 +26,7 @@ interface BarGroupProps {
 
 export function BarGroup({ bar, lineY }: BarGroupProps) {
   const selection = useChartStore((s) => s.ui.selection)
-  const updateMeasure = useChartStore((s) => s.updateMeasure)
+  const cycleBarline = useChartStore((s) => s.cycleBarline)
   const openEndingPicker = useChartStore((s) => s.openEndingPicker)
   const isSelected = selection?.measureId === bar.measureId
   const showSlashes = useChartStore((s) => s.ui.showSlashes)
@@ -93,12 +89,11 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
     })
   }
 
-  // Cycling enforces the no-nested-repeats rule: repeatStart is skipped
-  // when there's already an open repeat above this barline, and repeatEnd
-  // is skipped when there's no open repeat to close. When the resulting
-  // style is `repeatStart`, we also stamp a fresh repeatRegionId.
+  // Click handler for the start barline. The actual cycling logic
+  // (validation, regionId stamping, ending reflow) lives in the store's
+  // `cycleBarline` action so it runs as a single atomic mutation.
+  // BarGroup just decides whether to cycle or open the ending picker.
   const cycleStartBarline = (e?: React.MouseEvent<SVGElement>) => {
-    const liveChart = useChartStore.getState().chart
     // Tapping inside a region opens the ending picker instead of cycling,
     // BUT only when the bar isn't already covered by an ending bracket.
     // Bars with an existing slice fall through to normal cycling so the
@@ -115,19 +110,9 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
       openPickerForOwner(e, bar.sectionId, bar.measureId)
       return
     }
-    const valid = validBarlineStylesAt(liveChart, bar.sectionId, bar.measureId, "start")
-    const current = (bar.startBarline ?? "single") as BarlineStyle
-    const next = cycleBarlineStyle(current, valid)
-    const updates: Record<string, unknown> = { barlineStart: next }
-    if (next === "repeatStart" && current !== "repeatStart") {
-      updates.repeatRegionId = generateRepeatRegionId()
-    } else if (current === "repeatStart" && next !== "repeatStart") {
-      updates.repeatRegionId = undefined
-    }
-    updateMeasure(bar.sectionId, bar.measureId, updates)
+    cycleBarline(bar.sectionId, bar.measureId, "start")
   }
   const cycleEndBarline = (e?: React.MouseEvent<SVGElement>) => {
-    const liveChart = useChartStore.getState().chart
     if (
       liveRegion &&
       !voltaSlice &&
@@ -138,14 +123,7 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
       openPickerForOwner(e, bar.sectionId, bar.measureId)
       return
     }
-    const valid = validBarlineStylesAt(liveChart, bar.sectionId, bar.measureId, "end")
-    const current = (bar.endBarline ?? "single") as BarlineStyle
-    const next = cycleBarlineStyle(current, valid)
-    const updates: Record<string, unknown> = { barlineEnd: next }
-    if (next === "repeatStart" && current !== "repeatStart") {
-      updates.repeatRegionId = generateRepeatRegionId()
-    }
-    updateMeasure(bar.sectionId, bar.measureId, updates)
+    cycleBarline(bar.sectionId, bar.measureId, "end")
   }
 
   const chordScale = useEffectiveScale("chordSize")

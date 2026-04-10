@@ -14,7 +14,9 @@ import type {
   ChartMeta,
 } from "./schema"
 import { ChordChartSchema } from "./schema"
-import { pruneOrphanedVoltas } from "./voltaState"
+import { pruneOrphanedVoltas, reallocateEndings, generateRepeatRegionId } from "./voltaState"
+import { validBarlineStylesAt, cycleBarlineStyle } from "./barlineValidation"
+import type { Barline as BarlineStyle } from "./schema"
 import { buildUserStyle, UserStyleSchema, type UserStyle } from "./userStyle"
 import {
   createBeat,
@@ -98,6 +100,12 @@ export interface ChartState {
     description: string,
     edits: Array<{ sectionId: string; measureId: string; updates: Partial<Measure> }>,
   ) => void
+  /** Cycle a barline style and reflow endings as a single atomic
+   *  mutation. Encapsulates the no-nested-repeats validation, the
+   *  repeatRegionId stamping/clearing on repeatStart transitions, and
+   *  the post-edit `reallocateEndings` pass that keeps multi-ending
+   *  cascades in sync with the close-repeat layout. */
+  cycleBarline: (sectionId: string, measureId: string, side: "start" | "end") => void
   deleteMeasure: (sectionId: string, measureId: string) => void
 
   // Ending picker
@@ -307,6 +315,42 @@ export const useChartStore = create<ChartState>()(
             const measure = findMeasure(section, edit.measureId)
             if (measure) Object.assign(measure, edit.updates)
           }
+        })
+      },
+
+      cycleBarline: (sectionId, measureId, side) => {
+        // Snapshot live state to compute the next style + validation.
+        const chart = get().chart
+        const valid = validBarlineStylesAt(chart, sectionId, measureId, side)
+        const liveSection = chart.sections.find((s) => s.id === sectionId)
+        const liveMeasure = liveSection?.measures.find((m) => m.id === measureId)
+        if (!liveMeasure) return
+        const field = side === "start" ? "barlineStart" : "barlineEnd"
+        const current = (liveMeasure[field] ?? "single") as BarlineStyle
+        const next = cycleBarlineStyle(current, valid)
+        if (next === current) return // nothing to do
+
+        mutateChart("Cycle barline", (chart) => {
+          const section = findSection(chart, sectionId)
+          if (!section) return
+          const measure = findMeasure(section, measureId)
+          if (!measure) return
+          if (side === "start") {
+            measure.barlineStart = next
+          } else {
+            measure.barlineEnd = next
+          }
+          // Stamp / clear repeatRegionId on repeatStart transitions so
+          // findRepeatRegions can identify the new region.
+          if (next === "repeatStart" && current !== "repeatStart") {
+            measure.repeatRegionId = generateRepeatRegionId()
+          } else if (current === "repeatStart" && next !== "repeatStart") {
+            delete (measure as Measure).repeatRegionId
+          }
+          // Reflow endings inside the same mutation so the cascade
+          // (snap existing 1st ending, shift 2nd, pop new 3rd) lands as
+          // a single undoable step.
+          reallocateEndings(chart)
         })
       },
 
