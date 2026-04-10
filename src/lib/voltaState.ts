@@ -96,34 +96,18 @@ export function findRepeatRegions(chart: ChordChart): RepeatRegion[] {
 }
 
 /** Find the repeat region that contains the given measure. The measure
- *  may be the opening, the closing, anything in between, OR the bar
- *  immediately after the close-repeat (where the closing ending lives —
- *  that bar is logically attached to the region even though it sits
- *  outside the region's `measures` list). */
+ *  may be the opening, the closing, anything in between, OR any bar in
+ *  the region's "ending zone" — the stretch between the region's close
+ *  and the next open-repeat (or the end of the chart). Those trailing
+ *  bars can host cascading 2nd/3rd/4th endings, so they're considered
+ *  part of the region for picker/click-routing purposes. */
 export function findRegionContaining(
   chart: ChordChart,
   sectionId: string,
   measureId: string,
 ): RepeatRegion | null {
-  const regions = findRepeatRegions(chart)
-  for (const r of regions) {
-    if (
-      r.measures.some(
-        (m) => m.sectionId === sectionId && m.measureId === measureId,
-      )
-    ) {
-      return r
-    }
-    const after = findMeasureAfterRegion(chart, r)
-    if (
-      after &&
-      after.sectionId === sectionId &&
-      after.measureId === measureId
-    ) {
-      return r
-    }
-  }
-  return null
+  const regionMap = computeRegionMap(chart)
+  return regionMap.get(measureId) ?? null
 }
 
 /** Resolve a measure object inside a chart by its (section, measure) ids. */
@@ -310,19 +294,50 @@ export function computeRegionMap(
 ): Map<string, RepeatRegion> {
   const map = new Map<string, RepeatRegion>()
   const regions = findRepeatRegions(chart)
+
+  // Flatten chart bars so we can walk by index.
+  const flat: Array<{ sectionId: string; measure: Measure }> = []
+  for (const section of chart.sections) {
+    for (const measure of section.measures) {
+      flat.push({ sectionId: section.id, measure })
+    }
+  }
+  const findIdx = (sectionId: string, measureId: string): number => {
+    for (let j = 0; j < flat.length; j++) {
+      if (
+        flat[j]!.sectionId === sectionId &&
+        flat[j]!.measure.id === measureId
+      )
+        return j
+    }
+    return -1
+  }
+
   for (const region of regions) {
+    // Map bars inside the region itself.
     for (const m of region.measures) {
       map.set(m.measureId, region)
     }
-    // Also include the bar immediately after the region — that's where
-    // the closing ending lives. Click handlers on that bar need to
-    // resolve back to the region even before any volta is placed there.
-    const after = findMeasureAfterRegion(chart, region)
-    if (after && !map.has(after.measureId)) {
-      map.set(after.measureId, region)
+    // Extend into the "ending zone" — every bar after the region's
+    // close, up to the next open-repeat or the end of the chart.
+    // These bars can host additional endings (2nd, 3rd, etc.) that
+    // cascade off the same opener. Without this extension the user
+    // could add only a single outside-region ending; any bar beyond
+    // the first "after" bar fell through to barline cycling because
+    // it wasn't in the map.
+    const endIdx = findIdx(region.endSectionId, region.endMeasureId)
+    if (endIdx === -1) continue
+    for (let j = endIdx + 1; j < flat.length; j++) {
+      const m = flat[j]!.measure
+      // Stop at the start of a new region.
+      if (m.barlineStart === "repeatStart" && m.repeatRegionId) break
+      if (!map.has(m.id)) {
+        map.set(m.id, region)
+      }
     }
   }
-  // Voltas placed elsewhere still resolve to their region.
+  // Voltas placed elsewhere (e.g. edited by hand) still resolve to
+  // their region.
   for (const section of chart.sections) {
     for (const measure of section.measures) {
       if (measure.volta && !map.has(measure.id)) {

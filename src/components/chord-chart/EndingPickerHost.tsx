@@ -90,15 +90,19 @@ export function EndingPickerHost() {
 
     // First-ending auto-create: stamp a closing ending in the bar
     // immediately after the close-repeat — but only when that bar is in
-    // the same section (otherwise we'd silently spill into the next
-    // section, which is surprising). The closing ordinal is derived
-    // from the ordinals the user just picked: picking "1." auto-creates
-    // "2."; picking "1., 2." auto-creates "3." (since ordinals 1 and 2
-    // are already covered by the opening bracket).
+    // the same section and is NOT the same bar the user just clicked
+    // (otherwise we'd overwrite their own ending). The closing ordinal
+    // is derived from the ordinals the user just picked: picking "1."
+    // auto-creates "2."; picking "1., 2." auto-creates "3." (since
+    // ordinals 1 and 2 are already covered by the opening bracket).
     const wasFirst = listVoltasInRegion(chart, region).length === 0
     if (wasFirst) {
       const next = findMeasureAfterRegion(chart, region)
-      if (next && next.sectionId === region.endSectionId) {
+      const sameBar =
+        next &&
+        next.sectionId === target.sectionId &&
+        next.measureId === target.measureId
+      if (next && next.sectionId === region.endSectionId && !sameBar) {
         const pickedOrdinals = parseVoltaOrdinals(finalLabel)
         const maxPicked = pickedOrdinals.length > 0 ? Math.max(...pickedOrdinals) : 1
         const closing = presetForOrdinal(maxPicked + 1)
