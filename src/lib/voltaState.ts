@@ -301,23 +301,52 @@ export interface VoltaSlice {
 
 /**
  * Walks the chart and computes a volta slice for every measure that is
- * covered by a volta. A volta extends from its starting measure until
- * the next measure (in chart order) that carries another volta with the
- * same `regionId`, OR until the end of the chart if no such next volta
- * exists.
+ * covered by a volta. An ending bracket extends from its starting
+ * measure until the earlier of:
+ *   - the next measure that carries another volta in the same region, or
+ *   - the region's close-repeat bar (for inside-region voltas), or
+ *   - the end of the current section (for outside-region voltas like the
+ *     closing ending placed after the repeat).
+ *
+ * The previous "extend to end of chart" fallback caused brackets to
+ * shoot past the repeat barline, which is what the user saw in the
+ * "Autumn Leaves" screenshot.
  */
 export function computeVoltaSlices(
   chart: ChordChart,
 ): Map<string, VoltaSlice> {
   const slices = new Map<string, VoltaSlice>()
+  const regions = findRepeatRegions(chart)
 
-  // Flatten (section, measure) pairs into a linear list so we can index
-  // by chart position.
+  // Build quick lookup: regionId → flat-index of the region's close bar,
+  // and regionId → set of measureIds inside the region.
   const flat: Array<{ sectionId: string; measure: Measure }> = []
   for (const section of chart.sections) {
     for (const measure of section.measures) {
       flat.push({ sectionId: section.id, measure })
     }
+  }
+
+  const regionEndIdx = new Map<string, number>()
+  const regionMeasureIds = new Map<string, Set<string>>()
+  for (const region of regions) {
+    const ids = new Set<string>()
+    for (const m of region.measures) ids.add(m.measureId)
+    regionMeasureIds.set(region.regionId, ids)
+    // Find the flat index of the region's closing measure.
+    for (let j = 0; j < flat.length; j++) {
+      if (flat[j]!.measure.id === region.endMeasureId) {
+        regionEndIdx.set(region.regionId, j)
+        break
+      }
+    }
+  }
+
+  // Section boundary lookup — the flat index of the last bar in each
+  // section. Used to cap outside-region voltas at the section end.
+  const sectionLastIdx = new Map<string, number>()
+  for (let j = 0; j < flat.length; j++) {
+    sectionLastIdx.set(flat[j]!.sectionId, j)
   }
 
   for (let i = 0; i < flat.length; i++) {
@@ -327,15 +356,28 @@ export function computeVoltaSlices(
     const regionId = measure.volta.regionId
 
     // Find the next measure that has a volta in the same region.
-    let nextIdx = -1
+    let nextVoltaIdx = -1
     for (let j = i + 1; j < flat.length; j++) {
       if (flat[j]!.measure.volta?.regionId === regionId) {
-        nextIdx = j
+        nextVoltaIdx = j
         break
       }
     }
 
-    const lastIdx = nextIdx === -1 ? flat.length - 1 : nextIdx - 1
+    // Determine the natural boundary for this bracket:
+    const insideRegion = regionMeasureIds.get(regionId)?.has(measure.id) ?? false
+    let boundaryIdx: number
+    if (nextVoltaIdx !== -1) {
+      boundaryIdx = nextVoltaIdx - 1
+    } else if (insideRegion) {
+      // Inside the region — cap at the region's close-repeat bar.
+      boundaryIdx = regionEndIdx.get(regionId) ?? i
+    } else {
+      // Outside the region (closing ending) — cap at the section end.
+      boundaryIdx = sectionLastIdx.get(owner.sectionId) ?? i
+    }
+
+    const lastIdx = Math.max(i, boundaryIdx)
     const lastBar = flat[lastIdx]!.measure
     const endsAtRepeat = lastBar.barlineEnd === "repeatEnd"
 
