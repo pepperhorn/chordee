@@ -20,6 +20,7 @@ import {
   suggestNextPreset,
   findMeasureAfterRegion,
   generateRepeatRegionId,
+  useVoltaSlice,
 } from "@/lib/voltaState"
 import { findVoltaPreset, DEFAULT_CLOSING_PRESET } from "@/lib/voltaPresets"
 import { VoltaPicker } from "./VoltaPicker"
@@ -118,6 +119,7 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
     .find((s) => s.id === bar.sectionId)
     ?.measures.find((m) => m.id === bar.measureId)
   const currentVolta: Volta | null = measureObj?.volta ?? null
+  const voltaSlice = useVoltaSlice(bar.measureId)
   const voltasInRegion = liveRegion ? listVoltasInRegion(chart, liveRegion) : []
   const isFirstInRegion = voltasInRegion.length === 0
   const taken = liveRegion ? takenPresetKeys(chart, liveRegion) : new Set<string>()
@@ -297,16 +299,19 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
         />
       )}
 
-      {/* Volta bracket — when this measure carries a volta, render the
-          left tick + horizontal top line. Span ends are handled by
-          subsequent bars in the same region (each bar draws its own slice). */}
-      {currentVolta && (
+      {/* Volta bracket slice for this bar. Per-bar slices are computed
+          once per chart in ChartSVG and threaded via VoltaSlicesContext,
+          so multi-bar voltas render seamlessly (middle bars draw only
+          the top line; end bars get the closing tick) and multi-line
+          voltas "just work" because the slice follows the bar wherever
+          line-breaking lands it. */}
+      {voltaSlice && (
         <VoltaBracket
-          label={currentVolta.label}
+          label={voltaSlice.label}
           width={bar.width}
-          // Top of the bracket sits above the chord row
           y={-Math.round(28 * chordScale)}
-          showStartTick={true}
+          showLeftTick={voltaSlice.absoluteStart}
+          showRightTick={voltaSlice.absoluteEnd && !voltaSlice.endsAtRepeat}
         />
       )}
 
@@ -333,17 +338,27 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
 // ── Volta bracket ──────────────────────────────────────────────────────
 
 interface VoltaBracketProps {
-  label: string
+  /** Null for bars in the middle/end of a multi-bar volta — label only
+   *  renders on the absolute first bar. */
+  label: string | null
   width: number
   y: number
-  showStartTick: boolean
+  showLeftTick: boolean
+  showRightTick: boolean
 }
 
-function VoltaBracket({ label, width, y, showStartTick }: VoltaBracketProps) {
+function VoltaBracket({
+  label,
+  width,
+  y,
+  showLeftTick,
+  showRightTick,
+}: VoltaBracketProps) {
   const TICK_HEIGHT = 8
   return (
     <g className="volta-bracket" pointerEvents="none">
-      {/* Top horizontal line */}
+      {/* Top horizontal line — always spans the full bar width so
+          multi-bar voltas appear continuous. */}
       <line
         x1={0}
         y1={y}
@@ -352,8 +367,8 @@ function VoltaBracket({ label, width, y, showStartTick }: VoltaBracketProps) {
         stroke="currentColor"
         strokeWidth={1.2}
       />
-      {/* Left start tick */}
-      {showStartTick && (
+      {/* Left start tick — only on the first bar of the volta */}
+      {showLeftTick && (
         <line
           x1={0}
           y1={y}
@@ -363,17 +378,32 @@ function VoltaBracket({ label, width, y, showStartTick }: VoltaBracketProps) {
           strokeWidth={1.2}
         />
       )}
-      {/* Label */}
-      <text
-        x={5}
-        y={y + 11}
-        fontSize={11}
-        fontFamily="PetalumaScript, serif"
-        fontWeight={700}
-        fill="currentColor"
-      >
-        {label}
-      </text>
+      {/* Right end tick — only on the last bar of the volta, and only
+          when the bar isn't closed by a repeatEnd barline (that barline
+          already visually closes the bracket). */}
+      {showRightTick && (
+        <line
+          x1={width}
+          y1={y}
+          x2={width}
+          y2={y + TICK_HEIGHT}
+          stroke="currentColor"
+          strokeWidth={1.2}
+        />
+      )}
+      {/* Label — only on the first bar of the volta */}
+      {label && (
+        <text
+          x={5}
+          y={y + 11}
+          fontSize={11}
+          fontFamily="PetalumaScript, serif"
+          fontWeight={700}
+          fill="currentColor"
+        >
+          {label}
+        </text>
+      )}
     </g>
   )
 }

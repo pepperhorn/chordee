@@ -1,9 +1,11 @@
+import { useMemo } from "react"
 import type { LayoutResult, LayoutElement } from "@/lib/layout/types"
 import { BarGroup } from "./BarGroup"
 import { SectionHeader } from "./SectionHeader"
 import { useChartStore } from "@/lib/store"
 import { RELATIVE_SIZE_SCALE, type FontConfig } from "@/lib/fonts"
 import { FontConfigOverrideProvider } from "@/lib/fontConfigContext"
+import { computeVoltaSlices, VoltaSlicesContext } from "@/lib/voltaState"
 
 interface ChartSVGProps {
   layout: LayoutResult
@@ -24,13 +26,18 @@ function renderElement(el: LayoutElement, lineY: number) {
 }
 
 export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSVGProps) {
-  const meta = useChartStore((s) => s.chart.meta)
+  const chart = useChartStore((s) => s.chart)
+  const meta = chart.meta
   const storeFc = useChartStore((s) => s.ui.fontConfig)
   const fc: FontConfig = fontConfigOverride
     ? { ...storeFc, ...fontConfigOverride }
     : storeFc
   const setSelection = useChartStore((s) => s.setSelection)
   const addMeasure = useChartStore((s) => s.addMeasure)
+
+  // Precompute volta slices once per chart change — cheaper than each
+  // BarGroup walking the chart on every render.
+  const voltaSlices = useMemo(() => computeVoltaSlices(chart), [chart])
 
   // For each section, remember the last bar rendered (by line + rect) so we
   // can draw a "+ add bar" affordance at its right edge.
@@ -95,6 +102,7 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
 
   return (
     <FontConfigOverrideProvider value={fontConfigOverride ?? null}>
+    <VoltaSlicesContext.Provider value={voltaSlices}>
     <svg
       id="chart-area"
       className="chart-svg"
@@ -261,6 +269,7 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
         </text>
       )}
     </svg>
+    </VoltaSlicesContext.Provider>
     </FontConfigOverrideProvider>
   )
 }

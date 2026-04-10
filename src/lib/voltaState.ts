@@ -1,3 +1,4 @@
+import { createContext, useContext } from "react"
 import type { ChordChart, Measure, Volta } from "./schema"
 import { findVoltaPreset, VOLTA_PRESETS, type VoltaPreset } from "./voltaPresets"
 
@@ -182,3 +183,100 @@ export function generateRepeatRegionId(): string {
 
 // Re-export for callers that want to format a saved volta
 export { findVoltaPreset }
+
+// ── Per-bar volta slice ─────────────────────────────────────────────────
+
+/**
+ * Describes what a single measure's volta bracket should look like.
+ * `null` / absent means the bar is not part of any volta.
+ *
+ * A volta bracket is a horizontal line above the staff that spans one or
+ * more consecutive bars. This struct tells a BarGroup whether to:
+ *   - draw the left end-tick (absolute first bar of the volta only)
+ *   - draw the right end-tick (absolute last bar of the volta, and only
+ *     when the bar isn't closed by a `repeatEnd` barline — that barline
+ *     visually closes the bracket on its own)
+ *   - render the label (absolute first bar only)
+ *
+ * Bars in the middle of a volta render only the top horizontal line;
+ * left/right ticks are false. This makes multi-line voltas "just work"
+ * because each layout line's first bar has absoluteStart=false (unless
+ * it's also the volta's first bar) — the line starts without a tick,
+ * the top line fills the bar width, and the bracket visually continues
+ * from the previous line.
+ */
+export interface VoltaSlice {
+  label: string | null
+  absoluteStart: boolean
+  absoluteEnd: boolean
+  /** True if the bar that ends this volta slice has `barlineEnd === "repeatEnd"`.
+   *  Callers use this to suppress the right-side tick since the close-repeat
+   *  visually closes the bracket. */
+  endsAtRepeat: boolean
+}
+
+/**
+ * Walks the chart and computes a volta slice for every measure that is
+ * covered by a volta. A volta extends from its starting measure until
+ * the next measure (in chart order) that carries another volta with the
+ * same `regionId`, OR until the end of the chart if no such next volta
+ * exists.
+ */
+export function computeVoltaSlices(
+  chart: ChordChart,
+): Map<string, VoltaSlice> {
+  const slices = new Map<string, VoltaSlice>()
+
+  // Flatten (section, measure) pairs into a linear list so we can index
+  // by chart position.
+  const flat: Array<{ sectionId: string; measure: Measure }> = []
+  for (const section of chart.sections) {
+    for (const measure of section.measures) {
+      flat.push({ sectionId: section.id, measure })
+    }
+  }
+
+  for (let i = 0; i < flat.length; i++) {
+    const measure = flat[i]!.measure
+    if (!measure.volta) continue
+    const regionId = measure.volta.regionId
+
+    // Find the next measure that has a volta in the same region.
+    let nextIdx = -1
+    for (let j = i + 1; j < flat.length; j++) {
+      if (flat[j]!.measure.volta?.regionId === regionId) {
+        nextIdx = j
+        break
+      }
+    }
+
+    const lastIdx = nextIdx === -1 ? flat.length - 1 : nextIdx - 1
+    const lastBar = flat[lastIdx]!.measure
+    const endsAtRepeat = lastBar.barlineEnd === "repeatEnd"
+
+    for (let k = i; k <= lastIdx; k++) {
+      const bar = flat[k]!.measure
+      if (slices.has(bar.id)) continue // first-writer wins
+      slices.set(bar.id, {
+        label: k === i ? measure.volta.label : null,
+        absoluteStart: k === i,
+        absoluteEnd: k === lastIdx,
+        endsAtRepeat,
+      })
+    }
+  }
+
+  return slices
+}
+
+/** React context carrying the precomputed volta slice map from ChartSVG
+ *  down to individual BarGroups, avoiding per-bar chart walks. */
+export const VoltaSlicesContext = createContext<Map<string, VoltaSlice> | null>(
+  null,
+)
+
+export function useVoltaSlice(measureId: string): VoltaSlice | null {
+  const map = useContext(VoltaSlicesContext)
+  if (!map) return null
+  return map.get(measureId) ?? null
+}
