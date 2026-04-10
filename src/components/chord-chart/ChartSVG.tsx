@@ -31,9 +31,10 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
     : storeFc
   const setSelection = useChartStore((s) => s.setSelection)
 
-  const headingScale = RELATIVE_SIZE_SCALE[fc.headingSize] ?? 1
-  const subtitleScale = RELATIVE_SIZE_SCALE[fc.subtitleSize] ?? 1
-  const bodyScale = RELATIVE_SIZE_SCALE[fc.bodySize] ?? 1
+  const globalMul = RELATIVE_SIZE_SCALE[fc.globalScale] ?? 1
+  const headingScale = (RELATIVE_SIZE_SCALE[fc.headingSize] ?? 1) * globalMul
+  const subtitleScale = (RELATIVE_SIZE_SCALE[fc.subtitleSize] ?? 1) * globalMul
+  const bodyScale = (RELATIVE_SIZE_SCALE[fc.bodySize] ?? 1) * globalMul
   const titleFontSize = Math.round(24 * headingScale)
   const subtitleFontSize = Math.round(14 * subtitleScale)
   const infoFontSize = Math.round(13 * bodyScale)

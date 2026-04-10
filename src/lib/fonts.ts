@@ -17,6 +17,9 @@ export const RELATIVE_SIZES: { value: RelativeSize; label: string }[] = [
 ]
 
 export interface FontConfig {
+  /** Master scale applied on top of every per-font size below.
+   *  Lets users bump everything up/down without re-tweaking each field. */
+  globalScale: RelativeSize
   heading: string
   headingSize: RelativeSize
   headingColor?: string
@@ -44,10 +47,14 @@ export interface FontConfig {
   clef: string
   clefSize: RelativeSize
   clefColor?: string
+  barline: string
+  barlineSize: RelativeSize
+  barlineColor?: string
   lineSpacing: RelativeSize
 }
 
 export const DEFAULT_FONT_CONFIG: FontConfig = {
+  globalScale: "md",
   heading: "PetalumaScript",
   headingSize: "lg",
   subtitle: "PetalumaScript",
@@ -66,6 +73,8 @@ export const DEFAULT_FONT_CONFIG: FontConfig = {
   rehearsalSize: "xl",
   clef: "Petaluma",
   clefSize: "md",
+  barline: "Petaluma",
+  barlineSize: "md",
   lineSpacing: "md",
 }
 

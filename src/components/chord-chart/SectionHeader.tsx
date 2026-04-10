@@ -1,7 +1,6 @@
 import type { LayoutSectionHeader } from "@/lib/layout/types"
 import { useChartStore } from "@/lib/store"
-import { RELATIVE_SIZE_SCALE } from "@/lib/fonts"
-import { useFontConfigField } from "@/lib/fontConfigContext"
+import { useFontConfigField, useEffectiveScale } from "@/lib/fontConfigContext"
 
 interface SectionHeaderProps {
   header: LayoutSectionHeader
@@ -18,7 +17,7 @@ export function SectionHeader({ header }: SectionHeaderProps) {
   const selection = useChartStore((s) => s.ui.selection)
 
   const isSelected = selection?.sectionId === header.sectionId && selection?.type === "section"
-  const scale = RELATIVE_SIZE_SCALE[rehearsalSize] ?? 1
+  const scale = useEffectiveScale("rehearsalSize")
   const sectionFontSize = Math.round(BASE_SECTION_FONT_SIZE * scale)
   const rehearsalFontSize = Math.round(BASE_REHEARSAL_FONT_SIZE * scale)
   const boxSize = Math.round(20 * scale)

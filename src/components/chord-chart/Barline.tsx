@@ -1,64 +1,99 @@
+import { useFontConfigField, useEffectiveScale } from "@/lib/fontConfigContext"
+import type { Barline as BarlineType } from "@/lib/schema"
+
+// SMuFL barline glyphs (Petaluma / Bravura share these codepoints)
+const BARLINE_GLYPHS: Record<string, string> = {
+  single: "\uE030",
+  double: "\uE031",
+  final: "\uE032",
+  repeatStart: "\uE040",
+  repeatEnd: "\uE041",
+}
+
+// Repeat barlines look better when bumped a bit larger so the dots read.
+const BARLINE_SIZE_MULTIPLIER: Record<string, number> = {
+  single: 1.0,
+  double: 1.0,
+  final: 1.05,
+  repeatStart: 1.4,
+  repeatEnd: 1.4,
+}
+
+export const BARLINE_CYCLE: BarlineType[] = [
+  "single",
+  "double",
+  "repeatStart",
+  "repeatEnd",
+  "final",
+]
+
+export function nextBarlineStyle(current: string): BarlineType {
+  const idx = BARLINE_CYCLE.indexOf(current as BarlineType)
+  return BARLINE_CYCLE[(idx + 1) % BARLINE_CYCLE.length] ?? "single"
+}
+
 interface BarlineProps {
   style: string
   x: number
   height: number
   yOffset?: number
+  /** When provided, the barline becomes tappable and cycles through styles. */
+  onCycle?: () => void
 }
 
-export function Barline({ style, x, height, yOffset }: BarlineProps) {
+export function Barline({ style, x, height, yOffset, onCycle }: BarlineProps) {
   const y = yOffset ?? 30
+  const barlineFont = useFontConfigField("barline")
+  const barlineColor = useFontConfigField("barlineColor")
+  const scale = useEffectiveScale("barlineSize")
 
-  switch (style) {
-    case "single":
-      return (
-        <line
-          className="barline barline--single"
-          x1={x}
-          y1={y}
-          x2={x}
-          y2={y + height}
-          stroke="currentColor"
-          strokeWidth={1}
+  // Base font size keyed off the staff height so glyphs align with the
+  // five-line staff metric used elsewhere. Repeat signs get a small bump
+  // so the bullet dots are visually punchy.
+  const baseFontSize = height
+  const fontSize =
+    baseFontSize * scale * (BARLINE_SIZE_MULTIPLIER[style] ?? 1)
+  const glyph = BARLINE_GLYPHS[style] ?? BARLINE_GLYPHS.single
+
+  // Center the glyph vertically on the staff midline.
+  const cy = y + height / 2
+
+  return (
+    <g
+      className={`barline barline--${style}`}
+      data-style={style}
+      style={{ cursor: onCycle ? "pointer" : undefined }}
+      onClick={(e) => {
+        if (!onCycle) return
+        e.stopPropagation()
+        onCycle()
+      }}
+    >
+      {/* Wider transparent hit area so the user can tap easily */}
+      {onCycle && (
+        <rect
+          className="barline-hit-area"
+          x={x - 10}
+          y={y - 6}
+          width={20}
+          height={height + 12}
+          fill="transparent"
+          pointerEvents="all"
         />
-      )
-
-    case "double":
-      return (
-        <g className="barline barline--double">
-          <line className="barline-thin" x1={x - 2} y1={y} x2={x - 2} y2={y + height} stroke="currentColor" strokeWidth={1} />
-          <line className="barline-thin" x1={x + 1} y1={y} x2={x + 1} y2={y + height} stroke="currentColor" strokeWidth={1} />
-        </g>
-      )
-
-    case "final":
-      return (
-        <g className="barline barline--final">
-          <line className="barline-thin" x1={x - 4} y1={y} x2={x - 4} y2={y + height} stroke="currentColor" strokeWidth={1} />
-          <line className="barline-thick" x1={x} y1={y} x2={x} y2={y + height} stroke="currentColor" strokeWidth={3} />
-        </g>
-      )
-
-    case "repeatStart":
-      return (
-        <g className="barline barline--repeat-start">
-          <line className="barline-thick" x1={x} y1={y} x2={x} y2={y + height} stroke="currentColor" strokeWidth={3} />
-          <line className="barline-thin" x1={x + 4} y1={y} x2={x + 4} y2={y + height} stroke="currentColor" strokeWidth={1} />
-          <circle className="barline-repeat-dot barline-repeat-dot--upper" cx={x + 8} cy={y + height * 0.35} r={2} fill="currentColor" />
-          <circle className="barline-repeat-dot barline-repeat-dot--lower" cx={x + 8} cy={y + height * 0.65} r={2} fill="currentColor" />
-        </g>
-      )
-
-    case "repeatEnd":
-      return (
-        <g className="barline barline--repeat-end">
-          <circle className="barline-repeat-dot barline-repeat-dot--upper" cx={x - 8} cy={y + height * 0.35} r={2} fill="currentColor" />
-          <circle className="barline-repeat-dot barline-repeat-dot--lower" cx={x - 8} cy={y + height * 0.65} r={2} fill="currentColor" />
-          <line className="barline-thin" x1={x - 4} y1={y} x2={x - 4} y2={y + height} stroke="currentColor" strokeWidth={1} />
-          <line className="barline-thick" x1={x} y1={y} x2={x} y2={y + height} stroke="currentColor" strokeWidth={3} />
-        </g>
-      )
-
-    default:
-      return null
-  }
+      )}
+      <text
+        className="barline-glyph"
+        x={x}
+        y={cy}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize={fontSize}
+        fontFamily={`${barlineFont}, Petaluma, Bravura, serif`}
+        fill={barlineColor ?? "currentColor"}
+        pointerEvents="none"
+      >
+        {glyph}
+      </text>
+    </g>
+  )
 }

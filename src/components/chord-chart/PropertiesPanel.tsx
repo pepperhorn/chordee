@@ -109,73 +109,7 @@ export function PropertiesPanel() {
           <TabsContent value="chart" className="chart-tab px-3 pb-4">
             {/* Metadata */}
             <div className="meta-section space-y-3 pt-2">
-              <div className="field-group space-y-1">
-                <Label className="field-label text-xs">Title</Label>
-                <Input
-                  className="field-input h-8 text-sm"
-                  value={meta.title}
-                  onChange={(e) => updateMeta({ title: e.target.value })}
-                />
-              </div>
-
-              <div className="field-group space-y-1">
-                <Label className="field-label text-xs">Subtitle</Label>
-                <Input
-                  className="field-input h-8 text-sm"
-                  value={meta.subtitle ?? ""}
-                  onChange={(e) => updateMeta({ subtitle: e.target.value })}
-                  placeholder="Optional subtitle"
-                />
-              </div>
-
-              <div className="field-group space-y-1">
-                <Label className="field-label text-xs">Composer</Label>
-                <Input
-                  className="field-input h-8 text-sm"
-                  value={meta.composer}
-                  onChange={(e) => updateMeta({ composer: e.target.value })}
-                />
-              </div>
-
-              <div className="field-group space-y-1">
-                <Label className="field-label text-xs">Arranger</Label>
-                <Input
-                  className="field-input h-8 text-sm"
-                  value={meta.arranger}
-                  onChange={(e) => updateMeta({ arranger: e.target.value })}
-                  placeholder="Optional"
-                />
-              </div>
-
-              <div className="field-group space-y-1">
-                <Label className="field-label text-xs">Copyright</Label>
-                <Input
-                  className="field-input h-8 text-sm"
-                  value={meta.copyright ?? ""}
-                  onChange={(e) => updateMeta({ copyright: e.target.value })}
-                  placeholder="© 2026 Your Name"
-                />
-              </div>
-
-              <div className="field-group space-y-1">
-                <Label className="field-label text-xs">Footer Text</Label>
-                <Input
-                  className="field-input h-8 text-sm"
-                  value={meta.footerText ?? ""}
-                  onChange={(e) => updateMeta({ footerText: e.target.value })}
-                  placeholder="Optional — shown below copyright"
-                />
-              </div>
-
-              <div className="field-group space-y-1">
-                <Label className="field-label text-xs">Style</Label>
-                <Input
-                  className="field-input h-8 text-sm"
-                  value={meta.style ?? ""}
-                  onChange={(e) => updateMeta({ style: e.target.value })}
-                  placeholder="e.g. Medium Swing"
-                />
-              </div>
+              {/* ── Musical settings first (Key / Tempo / Clef) ──────── */}
 
               <div className="field-group flex gap-2">
                 <div className="field-group flex-1 space-y-1">
@@ -235,8 +169,6 @@ export function PropertiesPanel() {
                   Show Tempo
                 </Label>
               </div>
-
-              <Separator className="clef-sep" />
 
               {/* Clef & Key Signature */}
               <div className="clef-section space-y-3">
@@ -315,6 +247,82 @@ export function PropertiesPanel() {
                     </div>
                   </div>
                 )}
+              </div>
+
+              <p className="text-[10px] text-muted-foreground italic">
+                Time signature is per-section — set it in the Selection tab.
+              </p>
+
+              <Separator className="meta-info-sep" />
+
+              {/* ── Title / composer / copyright / style ─────────────── */}
+
+              <div className="field-group space-y-1">
+                <Label className="field-label text-xs">Title</Label>
+                <Input
+                  className="field-input h-8 text-sm"
+                  value={meta.title}
+                  onChange={(e) => updateMeta({ title: e.target.value })}
+                />
+              </div>
+
+              <div className="field-group space-y-1">
+                <Label className="field-label text-xs">Subtitle</Label>
+                <Input
+                  className="field-input h-8 text-sm"
+                  value={meta.subtitle ?? ""}
+                  onChange={(e) => updateMeta({ subtitle: e.target.value })}
+                  placeholder="Optional subtitle"
+                />
+              </div>
+
+              <div className="field-group space-y-1">
+                <Label className="field-label text-xs">Composer</Label>
+                <Input
+                  className="field-input h-8 text-sm"
+                  value={meta.composer}
+                  onChange={(e) => updateMeta({ composer: e.target.value })}
+                />
+              </div>
+
+              <div className="field-group space-y-1">
+                <Label className="field-label text-xs">Arranger</Label>
+                <Input
+                  className="field-input h-8 text-sm"
+                  value={meta.arranger}
+                  onChange={(e) => updateMeta({ arranger: e.target.value })}
+                  placeholder="Optional"
+                />
+              </div>
+
+              <div className="field-group space-y-1">
+                <Label className="field-label text-xs">Copyright</Label>
+                <Input
+                  className="field-input h-8 text-sm"
+                  value={meta.copyright ?? ""}
+                  onChange={(e) => updateMeta({ copyright: e.target.value })}
+                  placeholder="© 2026 Your Name"
+                />
+              </div>
+
+              <div className="field-group space-y-1">
+                <Label className="field-label text-xs">Footer Text</Label>
+                <Input
+                  className="field-input h-8 text-sm"
+                  value={meta.footerText ?? ""}
+                  onChange={(e) => updateMeta({ footerText: e.target.value })}
+                  placeholder="Optional — shown below copyright"
+                />
+              </div>
+
+              <div className="field-group space-y-1">
+                <Label className="field-label text-xs">Style</Label>
+                <Input
+                  className="field-input h-8 text-sm"
+                  value={meta.style ?? ""}
+                  onChange={(e) => updateMeta({ style: e.target.value })}
+                  placeholder="e.g. Medium Swing"
+                />
               </div>
 
             </div>
@@ -486,6 +494,21 @@ export function PropertiesPanel() {
                   Fonts
                 </Label>
 
+                {/* Master scale modifier — multiplies every per-font size below */}
+                <div className="global-scale-row rounded-md border border-input/50 p-2">
+                  <Label className="field-label mb-1 block text-xs font-medium">
+                    Overall size
+                  </Label>
+                  <SizeToggle
+                    label=""
+                    value={fontConfig.globalScale ?? "md"}
+                    onChange={(v) => setFontConfig({ globalScale: v })}
+                  />
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    Scales every font below — useful as a one-tap zoom.
+                  </p>
+                </div>
+
                 {(
                   [
                     ["chord", "Chord", "chordSize", "chordColor"],
@@ -497,6 +520,7 @@ export function PropertiesPanel() {
                     ["rehearsal", "Rehearsal / Section", "rehearsalSize", "rehearsalColor"],
                     ["timeSignature", "Time Signature", "timeSignatureSize", "timeSignatureColor"],
                     ["clef", "Clef & Key Sig", "clefSize", "clefColor"],
+                    ["barline", "Barlines", "barlineSize", "barlineColor"],
                   ] as const
                 ).map(([fontKey, label, sizeKey, colorKey]) => {
                   const isExpanded = !!expandedFonts[fontKey]

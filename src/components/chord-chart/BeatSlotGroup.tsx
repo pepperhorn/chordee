@@ -3,8 +3,7 @@ import { Slash } from "./Slash"
 import { BeamedSlashGroup } from "./BeamedSlashGroup"
 import { ChordSymbol } from "./ChordSymbol"
 import { useChartStore } from "@/lib/store"
-import { RELATIVE_SIZE_SCALE } from "@/lib/fonts"
-import { useFontConfigField } from "@/lib/fontConfigContext"
+import { useFontConfigField, useEffectiveScale } from "@/lib/fontConfigContext"
 
 const BEAMED_DIVISIONS = new Set([
   "eighth",
@@ -38,28 +37,30 @@ export function BeatSlotGroup({
   const selection = useChartStore((s) => s.ui.selection)
   const editMode = useChartStore((s) => s.ui.editMode)
   const setSelection = useChartStore((s) => s.setSelection)
-  const lyricSize = useFontConfigField("lyricSize")
   const lyricFont = useFontConfigField("lyric")
   const lyricColor = useFontConfigField("lyricColor")
-  const dynamicSize = useFontConfigField("dynamicSize")
   const dynamicFont = useFontConfigField("dynamic")
   const dynamicColor = useFontConfigField("dynamicColor")
-  const chordSize = useFontConfigField("chordSize")
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768
   const isBeatSelected = selection?.beatId === beat.beatId
   const isBeamed = BEAMED_DIVISIONS.has(beat.division)
-  const chordScale = RELATIVE_SIZE_SCALE[chordSize] ?? 1
-  const lyricScale = RELATIVE_SIZE_SCALE[lyricSize] ?? 1
-  const dynamicScale = RELATIVE_SIZE_SCALE[dynamicSize] ?? 1
+  const chordScale = useEffectiveScale("chordSize")
+  const lyricScale = useEffectiveScale("lyricSize")
+  const dynamicScale = useEffectiveScale("dynamicSize")
 
-  // Derive vertical positions from chord scale
-  // Chord baseline sits above the stave; stave starts after chord area
-  // Chord baseline: closer to stave
+  // Derive vertical positions from chord scale.
+  // Chord baseline sits above the stave; stave starts after chord area.
   const chordBaseline = Math.round(-2 * chordScale)
   const staveTop = Math.round(14 * chordScale)
-  // Center slash noteheads in stave area
-  const slashY = staveTop + 6
-  const beamedY = staveTop + 10
+  // Vertically center slash noteheads on the barline midline.
+  // Barline geometry: y = staveTop + 6, height = 32 (see BarGroup).
+  // Barline center = staveTop + 6 + 16 = staveTop + 22.
+  // Non-beamed slash notehead has height 12, so its top must be barline_center - 6
+  //   = staveTop + 16.
+  // Beamed slashes are translated by their CENTER (nhY = -NH_HEIGHT/2 inside),
+  //   so their y is the barline center directly.
+  const slashY = staveTop + 16
+  const beamedY = staveTop + 22
 
   return (
     <g
@@ -115,6 +116,19 @@ export function BeatSlotGroup({
             }
             style={{ cursor: "pointer" }}
           >
+            {/* Invisible hit-area covering the full slot column so the user
+                can click anywhere in the chord/slash region rather than
+                hitting the slash glyph exactly. */}
+            <rect
+              className="slot-hit-area"
+              x={-2}
+              y={-12}
+              width={slot.width + 4}
+              height={70}
+              fill="transparent"
+              pointerEvents="all"
+            />
+
             {/* Slot selection highlight (chord mode = slot, rhythm mode = beat-level above) */}
             {isSlotSelected && editMode === "chord" && (
               <rect

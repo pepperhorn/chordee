@@ -24,6 +24,7 @@ const HexColor = z
   .optional()
 
 export const UserStyleFontConfigSchema = z.object({
+  globalScale: RELATIVE_SIZE_ENUM.default("md"),
   heading: FontFamilyField,
   headingSize: RELATIVE_SIZE_ENUM,
   headingColor: HexColor,
@@ -51,6 +52,9 @@ export const UserStyleFontConfigSchema = z.object({
   clef: FontFamilyField,
   clefSize: RELATIVE_SIZE_ENUM,
   clefColor: HexColor,
+  barline: FontFamilyField.default("Petaluma"),
+  barlineSize: RELATIVE_SIZE_ENUM.default("md"),
+  barlineColor: HexColor,
   lineSpacing: RELATIVE_SIZE_ENUM,
 })
 

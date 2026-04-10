@@ -43,12 +43,15 @@ export function useChartLayout(
   return useMemo(() => {
     if (effectiveContainerWidth <= 0) return null
 
-    // Scale spacing based on font size settings to avoid collisions
-    const chordScale = RELATIVE_SIZE_SCALE[fontConfig.chordSize] ?? 1
-    const lyricScale = RELATIVE_SIZE_SCALE[fontConfig.lyricSize] ?? 1
-    const dynamicScale = RELATIVE_SIZE_SCALE[fontConfig.dynamicSize] ?? 1
-    const rehearsalScale = RELATIVE_SIZE_SCALE[fontConfig.rehearsalSize] ?? 1
-    const lineSpacingScale = RELATIVE_SIZE_SCALE[fontConfig.lineSpacing] ?? 1
+    // Scale spacing based on font size settings to avoid collisions.
+    // The user-set per-font sizes are multiplied by the chart-wide
+    // `globalScale` modifier so a single tier change rescales everything.
+    const globalMul = RELATIVE_SIZE_SCALE[fontConfig.globalScale] ?? 1
+    const chordScale = (RELATIVE_SIZE_SCALE[fontConfig.chordSize] ?? 1) * globalMul
+    const lyricScale = (RELATIVE_SIZE_SCALE[fontConfig.lyricSize] ?? 1) * globalMul
+    const dynamicScale = (RELATIVE_SIZE_SCALE[fontConfig.dynamicSize] ?? 1) * globalMul
+    const rehearsalScale = (RELATIVE_SIZE_SCALE[fontConfig.rehearsalSize] ?? 1) * globalMul
+    const lineSpacingScale = (RELATIVE_SIZE_SCALE[fontConfig.lineSpacing] ?? 1) * globalMul
 
     // lineHeight = vertical space for chord symbols above the stave
     // Needs to grow when chord font is larger
@@ -69,7 +72,7 @@ export function useChartLayout(
     const beatPaddingX = Math.round(DEFAULT_SPACING.beatPaddingX * Math.max(1, chordScale * 0.8))
 
     // Clef + key signature width for left margin reservation
-    const clefSizeScale = RELATIVE_SIZE_SCALE[fontConfig.clefSize] ?? 1
+    const clefSizeScale = (RELATIVE_SIZE_SCALE[fontConfig.clefSize] ?? 1) * globalMul
     const clefFontSize = Math.round(32 * clefSizeScale)
     const clefKeySigWidth = showClef
       ? estimateClefKeySigWidth(chartKey, clef, clefFontSize)

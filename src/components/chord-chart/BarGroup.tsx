@@ -4,9 +4,9 @@ import { Barline } from "./Barline"
 import { TimeSignatureDisplay } from "./TimeSignatureDisplay"
 import { ClefKeySignature } from "./ClefKeySignature"
 import { useChartStore } from "@/lib/store"
-import { RELATIVE_SIZE_SCALE } from "@/lib/fonts"
-import { useFontConfigField } from "@/lib/fontConfigContext"
+import { useEffectiveScale } from "@/lib/fontConfigContext"
 import { estimateClefKeySigWidth } from "@/lib/keySignature"
+import { nextBarlineStyle } from "./Barline"
 
 interface BarGroupProps {
   bar: LayoutBar
@@ -15,6 +15,7 @@ interface BarGroupProps {
 
 export function BarGroup({ bar, lineY }: BarGroupProps) {
   const selection = useChartStore((s) => s.ui.selection)
+  const updateMeasure = useChartStore((s) => s.updateMeasure)
   const isSelected = selection?.measureId === bar.measureId
   const showSlashes = useChartStore((s) => s.ui.showSlashes)
   const showDynamics = useChartStore((s) => s.ui.showDynamics)
@@ -22,9 +23,19 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
   const clef = useChartStore((s) => s.chart.meta.clef)
   const showClefSetting = useChartStore((s) => s.chart.meta.showClef ?? true)
   const chartKey = useChartStore((s) => s.chart.meta.key)
-  const clefSize = useFontConfigField("clefSize")
-  const chordScale = RELATIVE_SIZE_SCALE[useFontConfigField("chordSize")] ?? 1
-  const clefScale = RELATIVE_SIZE_SCALE[clefSize] ?? 1
+
+  const cycleStartBarline = () => {
+    updateMeasure(bar.sectionId, bar.measureId, {
+      barlineStart: nextBarlineStyle(bar.startBarline ?? "single"),
+    })
+  }
+  const cycleEndBarline = () => {
+    updateMeasure(bar.sectionId, bar.measureId, {
+      barlineEnd: nextBarlineStyle(bar.endBarline ?? "single"),
+    })
+  }
+  const chordScale = useEffectiveScale("chordSize")
+  const clefScale = useEffectiveScale("clefSize")
   const staveY = Math.round(14 * chordScale) + 6
 
   const showKeySig = useChartStore((s) => s.chart.meta.showKeySignature ?? true)
@@ -89,7 +100,13 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
 
       {/* Start barline */}
       {bar.startBarline && (
-        <Barline style={bar.startBarline} x={0} height={32} yOffset={staveY} />
+        <Barline
+          style={bar.startBarline}
+          x={0}
+          height={32}
+          yOffset={staveY}
+          onCycle={cycleStartBarline}
+        />
       )}
 
       {/* Beats */}
@@ -109,7 +126,13 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
 
       {/* End barline */}
       {bar.endBarline && (
-        <Barline style={bar.endBarline} x={bar.width} height={32} yOffset={staveY} />
+        <Barline
+          style={bar.endBarline}
+          x={bar.width}
+          height={32}
+          yOffset={staveY}
+          onCycle={cycleEndBarline}
+        />
       )}
 
       {/* Whole rest */}

@@ -1,5 +1,4 @@
-import { RELATIVE_SIZE_SCALE } from "@/lib/fonts"
-import { useFontConfigField } from "@/lib/fontConfigContext"
+import { useFontConfigField, useEffectiveScale } from "@/lib/fontConfigContext"
 import {
   CLEF_GLYPHS,
   ACCIDENTAL_GLYPHS,
@@ -31,12 +30,11 @@ export function ClefKeySignature({
   showKeySig,
 }: ClefKeySignatureProps) {
   const clefFont = useFontConfigField("clef")
-  const clefSize = useFontConfigField("clefSize")
   const clefColor = useFontConfigField("clefColor")
+  const scale = useEffectiveScale("clefSize")
 
   if (!showClef && !showKeySig) return null
 
-  const scale = RELATIVE_SIZE_SCALE[clefSize] ?? 1
   const fontSize = Math.round(BASE_FONT_SIZE * scale)
   const lineSpacing = staffHeight / (STAFF_LINES - 1)
   const accFontSize = Math.round(fontSize * ACCIDENTAL_FONT_RATIO)

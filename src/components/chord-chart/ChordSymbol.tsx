@@ -1,5 +1,4 @@
-import { RELATIVE_SIZE_SCALE } from "@/lib/fonts"
-import { useFontConfigField } from "@/lib/fontConfigContext"
+import { useFontConfigField, useEffectiveScale } from "@/lib/fontConfigContext"
 
 interface ChordSymbolProps {
   text: string
@@ -12,10 +11,8 @@ const BASE_CHORD_FONT_SIZE = 18
 
 export function ChordSymbol({ text, x, y, centered = false }: ChordSymbolProps) {
   const chordFont = useFontConfigField("chord")
-  const chordSize = useFontConfigField("chordSize")
   const chordColor = useFontConfigField("chordColor")
-
-  const scale = RELATIVE_SIZE_SCALE[chordSize] ?? 1
+  const scale = useEffectiveScale("chordSize")
   const fontSize = Math.round(BASE_CHORD_FONT_SIZE * scale)
 
   return (

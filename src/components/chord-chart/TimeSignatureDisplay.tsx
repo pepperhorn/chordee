@@ -1,5 +1,4 @@
-import { RELATIVE_SIZE_SCALE } from "@/lib/fonts"
-import { useFontConfigField } from "@/lib/fontConfigContext"
+import { useFontConfigField, useEffectiveScale } from "@/lib/fontConfigContext"
 
 interface TimeSignatureDisplayProps {
   beats: number
@@ -21,8 +20,7 @@ export function TimeSignatureDisplay({
   const tsFont = useFontConfigField("timeSignature")
   const tsSize = useFontConfigField("timeSignatureSize")
   const tsColor = useFontConfigField("timeSignatureColor")
-
-  const scale = RELATIVE_SIZE_SCALE[tsSize] ?? 1
+  const scale = useEffectiveScale("timeSignatureSize")
   const fontSize = BASE_FONT_SIZE * scale
   const midY = y + height / 2
 

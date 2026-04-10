@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useChartStore } from "@/lib/store"
 import { parseChord } from "@/lib/chordParser"
 import { formatChord } from "@/lib/utils"
-import { RELATIVE_SIZE_SCALE } from "@/lib/fonts"
+import { useEffectiveScale } from "@/lib/fontConfigContext"
 import type { LayoutResult } from "@/lib/layout/types"
 
 const BASE_CHORD_FONT_SIZE = 18
@@ -19,7 +19,7 @@ export function ChordInput({ layout }: ChordInputProps) {
   const editMode = useChartStore((s) => s.ui.editMode)
   const setSelection = useChartStore((s) => s.setSelection)
   const chordFont = useChartStore((s) => s.ui.fontConfig.chord)
-  const chordSize = useChartStore((s) => s.ui.fontConfig.chordSize)
+  const chordScale = useEffectiveScale("chordSize")
   const zoom = useChartStore((s) => s.ui.zoom)
 
   const [value, setValue] = useState("")
@@ -190,8 +190,7 @@ export function ChordInput({ layout }: ChordInputProps) {
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768
   if (!selectedEntry || !selection?.slotId || editMode !== "chord" || isMobile || !pos) return null
 
-  const scale = RELATIVE_SIZE_SCALE[chordSize] ?? 1
-  const fontSize = Math.round(BASE_CHORD_FONT_SIZE * scale)
+  const fontSize = Math.round(BASE_CHORD_FONT_SIZE * chordScale)
 
   return (
     <div

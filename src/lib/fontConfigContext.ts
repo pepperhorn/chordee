@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react"
-import type { FontConfig } from "./fonts"
+import { RELATIVE_SIZE_SCALE, type FontConfig, type RelativeSize } from "./fonts"
 import { useChartStore } from "./store"
 
 /**
@@ -31,4 +31,20 @@ export function useFontConfigField<K extends keyof FontConfig>(
     return override[key] as FontConfig[K]
   }
   return storeValue
+}
+
+/**
+ * Returns the effective scale factor for a per-font size key, multiplied by
+ * the chart-wide `globalScale` modifier. Use this in place of
+ * `RELATIVE_SIZE_SCALE[useFontConfigField("xxxSize")]` so the global scale
+ * is honored everywhere.
+ */
+export function useEffectiveScale(
+  sizeKey: keyof FontConfig & `${string}Size`,
+): number {
+  const sizeValue = useFontConfigField(sizeKey) as RelativeSize | undefined
+  const globalScale = useFontConfigField("globalScale") as RelativeSize | undefined
+  const perFont = sizeValue ? RELATIVE_SIZE_SCALE[sizeValue] ?? 1 : 1
+  const global = globalScale ? RELATIVE_SIZE_SCALE[globalScale] ?? 1 : 1
+  return perFont * global
 }
