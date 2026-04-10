@@ -1,3 +1,4 @@
+import type * as React from "react"
 import { useFontConfigField, useEffectiveScale } from "@/lib/fontConfigContext"
 import type { Barline as BarlineType } from "@/lib/schema"
 
@@ -39,8 +40,9 @@ interface BarlineProps {
   x: number
   height: number
   yOffset?: number
-  /** When provided, the barline becomes tappable and cycles through styles. */
-  onCycle?: () => void
+  /** When provided, the barline becomes tappable. The click event is forwarded
+   *  so callers can anchor a popover to the barline's screen position. */
+  onCycle?: (e: React.MouseEvent<SVGElement>) => void
 }
 
 export function Barline({ style, x, height, yOffset, onCycle }: BarlineProps) {
@@ -74,7 +76,7 @@ export function Barline({ style, x, height, yOffset, onCycle }: BarlineProps) {
       onClick={(e) => {
         if (!onCycle) return
         e.stopPropagation()
-        onCycle()
+        onCycle(e)
       }}
     >
       {/* Wider transparent hit area so the user can tap easily */}

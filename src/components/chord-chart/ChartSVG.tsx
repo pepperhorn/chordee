@@ -30,6 +30,25 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
     ? { ...storeFc, ...fontConfigOverride }
     : storeFc
   const setSelection = useChartStore((s) => s.setSelection)
+  const addMeasure = useChartStore((s) => s.addMeasure)
+
+  // For each section, remember the last bar rendered (by line + rect) so we
+  // can draw a "+ add bar" affordance at its right edge.
+  const addBarAnchors = new Map<
+    string,
+    { lineY: number; x: number; height: number }
+  >()
+  for (const line of layout.lines) {
+    for (const el of line.elements) {
+      if (el.type === "bar") {
+        addBarAnchors.set(el.sectionId, {
+          lineY: line.y,
+          x: el.x + el.width,
+          height: 32,
+        })
+      }
+    }
+  }
 
   const globalMul = RELATIVE_SIZE_SCALE[fc.globalScale] ?? 1
   const headingScale = (RELATIVE_SIZE_SCALE[fc.headingSize] ?? 1) * globalMul
@@ -171,6 +190,39 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
             {line.elements.map((el) => renderElement(el, line.y))}
           </g>
         ))}
+
+        {/* "+" add-bar buttons, positioned at each section's last bar */}
+        {Array.from(addBarAnchors.entries()).map(([sectionId, anchor]) => {
+          const cx = anchor.x + 14
+          const cy = anchor.lineY + anchor.height / 2 + 6
+          return (
+            <g
+              key={`add-bar-${sectionId}`}
+              className="add-bar-btn"
+              transform={`translate(${cx}, ${cy})`}
+              style={{ cursor: "pointer" }}
+              onClick={(e) => {
+                e.stopPropagation()
+                addMeasure(sectionId)
+              }}
+            >
+              <rect
+                x={-9}
+                y={-9}
+                width={18}
+                height={18}
+                rx={3}
+                fill="hsl(var(--background))"
+                stroke="currentColor"
+                strokeOpacity={0.35}
+                strokeWidth={1}
+              />
+              <line x1={-5} y1={0} x2={5} y2={0} stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+              <line x1={0} y1={-5} x2={0} y2={5} stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+              <title>Add bar to this section</title>
+            </g>
+          )
+        })}
       </g>
 
       {/* Chart-level copyright + footer text — 20px below the bottom of the chord chart */}

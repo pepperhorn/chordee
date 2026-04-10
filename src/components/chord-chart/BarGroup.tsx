@@ -3,6 +3,8 @@ import { BeatSlotGroup } from "./BeatSlotGroup"
 import { Barline } from "./Barline"
 import { TimeSignatureDisplay } from "./TimeSignatureDisplay"
 import { ClefKeySignature } from "./ClefKeySignature"
+import { useState } from "react"
+import { createPortal } from "react-dom"
 import { useChartStore } from "@/lib/store"
 import { useEffectiveScale } from "@/lib/fontConfigContext"
 import { estimateClefKeySigWidth } from "@/lib/keySignature"
@@ -11,7 +13,17 @@ import {
   cycleBarlineStyle,
   isUnclosedRepeatStart,
 } from "@/lib/barlineValidation"
-import type { Barline as BarlineStyle } from "@/lib/schema"
+import {
+  findRegionContaining,
+  listVoltasInRegion,
+  takenPresetKeys,
+  suggestNextPreset,
+  findMeasureAfterRegion,
+  generateRepeatRegionId,
+} from "@/lib/voltaState"
+import { findVoltaPreset, DEFAULT_CLOSING_PRESET } from "@/lib/voltaPresets"
+import { VoltaPicker } from "./VoltaPicker"
+import type { Barline as BarlineStyle, Volta } from "@/lib/schema"
 
 interface BarGroupProps {
   bar: LayoutBar
@@ -38,24 +50,119 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
     bar.endBarline === "repeatStart" &&
     isUnclosedRepeatStart(chart, bar.sectionId, bar.measureId, "end")
 
+  // Volta picker state — opens when the user taps a barline of a measure
+  // that's inside a repeat region (and the barline isn't a region marker).
+  const [voltaPickerOpen, setVoltaPickerOpen] = useState(false)
+  const [voltaAnchorRect, setVoltaAnchorRect] = useState<DOMRect | null>(null)
+
+  const openVoltaPickerFor = (e: React.MouseEvent<SVGElement>) => {
+    const target = e.currentTarget as SVGGraphicsElement
+    setVoltaAnchorRect(target.getBoundingClientRect())
+    setVoltaPickerOpen(true)
+  }
+
   // Cycling enforces the no-nested-repeats rule: repeatStart is skipped
   // when there's already an open repeat above this barline, and repeatEnd
-  // is skipped when there's no open repeat to close.
-  const cycleStartBarline = () => {
-    const chart = useChartStore.getState().chart
-    const valid = validBarlineStylesAt(chart, bar.sectionId, bar.measureId, "start")
+  // is skipped when there's no open repeat to close. When the resulting
+  // style is `repeatStart`, we also stamp a fresh repeatRegionId.
+  const cycleStartBarline = (e?: React.MouseEvent<SVGElement>) => {
+    const liveChart = useChartStore.getState().chart
+    // Tapping inside a region opens the volta picker instead of cycling,
+    // unless the current style is the region's marker (repeatStart/End).
+    const inRegion = findRegionContaining(liveChart, bar.sectionId, bar.measureId)
+    if (
+      inRegion &&
+      bar.startBarline !== "repeatStart" &&
+      bar.startBarline !== "repeatEnd" &&
+      e
+    ) {
+      openVoltaPickerFor(e)
+      return
+    }
+    const valid = validBarlineStylesAt(liveChart, bar.sectionId, bar.measureId, "start")
     const current = (bar.startBarline ?? "single") as BarlineStyle
-    updateMeasure(bar.sectionId, bar.measureId, {
-      barlineStart: cycleBarlineStyle(current, valid),
-    })
+    const next = cycleBarlineStyle(current, valid)
+    const updates: Record<string, unknown> = { barlineStart: next }
+    if (next === "repeatStart" && current !== "repeatStart") {
+      updates.repeatRegionId = generateRepeatRegionId()
+    } else if (current === "repeatStart" && next !== "repeatStart") {
+      updates.repeatRegionId = undefined
+    }
+    updateMeasure(bar.sectionId, bar.measureId, updates)
   }
-  const cycleEndBarline = () => {
-    const chart = useChartStore.getState().chart
-    const valid = validBarlineStylesAt(chart, bar.sectionId, bar.measureId, "end")
+  const cycleEndBarline = (e?: React.MouseEvent<SVGElement>) => {
+    const liveChart = useChartStore.getState().chart
+    const inRegion = findRegionContaining(liveChart, bar.sectionId, bar.measureId)
+    if (
+      inRegion &&
+      bar.endBarline !== "repeatStart" &&
+      bar.endBarline !== "repeatEnd" &&
+      e
+    ) {
+      openVoltaPickerFor(e)
+      return
+    }
+    const valid = validBarlineStylesAt(liveChart, bar.sectionId, bar.measureId, "end")
     const current = (bar.endBarline ?? "single") as BarlineStyle
+    const next = cycleBarlineStyle(current, valid)
+    const updates: Record<string, unknown> = { barlineEnd: next }
+    if (next === "repeatStart" && current !== "repeatStart") {
+      updates.repeatRegionId = generateRepeatRegionId()
+    }
+    updateMeasure(bar.sectionId, bar.measureId, updates)
+  }
+
+  // ── Volta apply / remove ────────────────────────────────────────────
+  const liveRegion = findRegionContaining(chart, bar.sectionId, bar.measureId)
+  const measureObj = chart.sections
+    .find((s) => s.id === bar.sectionId)
+    ?.measures.find((m) => m.id === bar.measureId)
+  const currentVolta: Volta | null = measureObj?.volta ?? null
+  const voltasInRegion = liveRegion ? listVoltasInRegion(chart, liveRegion) : []
+  const isFirstInRegion = voltasInRegion.length === 0
+  const taken = liveRegion ? takenPresetKeys(chart, liveRegion) : new Set<string>()
+  const suggested = liveRegion
+    ? suggestNextPreset(chart, liveRegion)
+    : { key: "1", label: "1." }
+
+  const applyVolta = (
+    preset: { key: string; label: string },
+    customLabel?: string,
+  ) => {
+    if (!liveRegion) return
+    const finalLabel = customLabel ?? preset.label
     updateMeasure(bar.sectionId, bar.measureId, {
-      barlineEnd: cycleBarlineStyle(current, valid),
+      volta: {
+        regionId: liveRegion.regionId,
+        label: finalLabel,
+        presetKey: preset.key,
+      },
     })
+
+    // If this is the first volta in the region AND there's a measure right
+    // after the close-repeat, auto-create the closing "2." volta there.
+    if (isFirstInRegion) {
+      const next = findMeasureAfterRegion(chart, liveRegion)
+      if (next) {
+        // Default closing preset, unless it's already taken
+        const closing = taken.has("2-close")
+          ? null
+          : { key: "2-close", label: "2." }
+        if (closing) {
+          updateMeasure(next.sectionId, next.measureId, {
+            volta: {
+              regionId: liveRegion.regionId,
+              label: closing.label,
+              presetKey: closing.key,
+            },
+          })
+        }
+      }
+    }
+  }
+
+  const removeVolta = () => {
+    updateMeasure(bar.sectionId, bar.measureId, { volta: undefined })
   }
   const chordScale = useEffectiveScale("chordSize")
   const clefScale = useEffectiveScale("clefSize")
@@ -158,12 +265,12 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
         />
       )}
 
-      {/* Unclosed-repeat hint — sits just above the offending repeat start */}
+      {/* Unclosed-repeat hint — sits above the chord row so it doesn't overlap. */}
       {(startBarUnclosed || endBarUnclosed) && (
         <g
           className="barline-unclosed-hint"
           pointerEvents="none"
-          transform={`translate(${startBarUnclosed ? 0 : bar.width}, ${staveY - 6})`}
+          transform={`translate(${startBarUnclosed ? 0 : bar.width}, ${-Math.round(24 * chordScale)})`}
         >
           <text
             x={4}
@@ -171,7 +278,7 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
             fontSize={10}
             fontStyle="italic"
             fill="hsl(var(--destructive))"
-            opacity={0.85}
+            opacity={0.9}
           >
             ↳ don&apos;t forget to close this repeat
           </text>
@@ -189,6 +296,84 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
           fill="currentColor"
         />
       )}
+
+      {/* Volta bracket — when this measure carries a volta, render the
+          left tick + horizontal top line. Span ends are handled by
+          subsequent bars in the same region (each bar draws its own slice). */}
+      {currentVolta && (
+        <VoltaBracket
+          label={currentVolta.label}
+          width={bar.width}
+          // Top of the bracket sits above the chord row
+          y={-Math.round(28 * chordScale)}
+          showStartTick={true}
+        />
+      )}
+
+      {/* Picker portal — rendered in document.body so it's free of the SVG tree */}
+      {voltaPickerOpen && typeof document !== "undefined" &&
+        createPortal(
+          <VoltaPicker
+            open={voltaPickerOpen}
+            onOpenChange={setVoltaPickerOpen}
+            anchorRect={voltaAnchorRect}
+            current={currentVolta}
+            takenKeys={taken}
+            suggested={suggested}
+            isFirstInRegion={isFirstInRegion}
+            onSelect={applyVolta}
+            onRemove={removeVolta}
+          />,
+          document.body,
+        )}
+    </g>
+  )
+}
+
+// ── Volta bracket ──────────────────────────────────────────────────────
+
+interface VoltaBracketProps {
+  label: string
+  width: number
+  y: number
+  showStartTick: boolean
+}
+
+function VoltaBracket({ label, width, y, showStartTick }: VoltaBracketProps) {
+  const TICK_HEIGHT = 8
+  return (
+    <g className="volta-bracket" pointerEvents="none">
+      {/* Top horizontal line */}
+      <line
+        x1={0}
+        y1={y}
+        x2={width}
+        y2={y}
+        stroke="currentColor"
+        strokeWidth={1.2}
+      />
+      {/* Left start tick */}
+      {showStartTick && (
+        <line
+          x1={0}
+          y1={y}
+          x2={0}
+          y2={y + TICK_HEIGHT}
+          stroke="currentColor"
+          strokeWidth={1.2}
+        />
+      )}
+      {/* Label */}
+      <text
+        x={5}
+        y={y + 11}
+        fontSize={11}
+        fontFamily="PetalumaScript, serif"
+        fontWeight={700}
+        fill="currentColor"
+      >
+        {label}
+      </text>
     </g>
   )
 }

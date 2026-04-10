@@ -62,6 +62,18 @@ export const BarlineSchema = z.enum([
   "repeatEnd",
 ])
 
+export const VoltaSchema = z.object({
+  /** Stable id of the repeat region this volta belongs to. Set on the
+   *  `repeatStart` measure as `repeatRegionId`. */
+  regionId: z.string(),
+  /** Display label — preset (e.g. "1.", "Last X.") or user-edited free text. */
+  label: z.string(),
+  /** The preset key the label was last derived from, used for uniqueness
+   *  checks within a region. Free-text overrides keep the original key
+   *  so they don't collide with the preset they sprouted from. */
+  presetKey: z.string().optional(),
+})
+
 export const MeasureSchema = z.object({
   id: z.string(),
   instruction: z.string().optional(),
@@ -73,6 +85,12 @@ export const MeasureSchema = z.object({
   ending: z.number().optional(),
   wholeRest: z.boolean().default(false),
   beats: z.array(BeatSchema),
+  /** Stable id of the repeat region opened on this measure. Only set when
+   *  `barlineStart === "repeatStart"`. Identifies a region across edits. */
+  repeatRegionId: z.string().optional(),
+  /** Volta bracket starting at this measure (extends right until the next
+   *  bar that has a volta in the same region, or until the region ends). */
+  volta: VoltaSchema.optional(),
 })
 
 // ── Section ────────────────────────────────────────────────────────────
@@ -151,6 +169,7 @@ export type BeatSlot = z.infer<typeof BeatSlotSchema>
 export type Division = z.infer<typeof DivisionSchema>
 export type Beat = z.infer<typeof BeatSchema>
 export type Barline = z.infer<typeof BarlineSchema>
+export type Volta = z.infer<typeof VoltaSchema>
 export type Measure = z.infer<typeof MeasureSchema>
 export type TimeSignature = z.infer<typeof TimeSignatureSchema>
 export type Navigation = z.infer<typeof NavigationSchema>
