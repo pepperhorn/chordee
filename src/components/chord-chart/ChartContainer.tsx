@@ -6,6 +6,7 @@ import { ChordInput } from "./ChordInput"
 import { DynamicInput } from "./DynamicInput"
 import { TimeSigPicker } from "./TimeSigPicker"
 import { KeySigPicker } from "./KeySigPicker"
+import { EndingPickerHost } from "./EndingPickerHost"
 import { getPaperOverlayStyle } from "@/lib/paperTexture"
 import { useChartStore } from "@/lib/store"
 import { pickBrandTagline } from "@/lib/brandTaglines"
@@ -149,6 +150,7 @@ export function ChartContainer() {
       </div>
 
       <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
+      <EndingPickerHost />
     </div>
   )
 }

@@ -43,7 +43,11 @@ export const VOLTA_PRESETS: Record<VoltaColumn, VoltaPreset[]> = {
     ...NAMED,
   ],
   closing: [
-    { key: "2-close", label: "2." },
+    // Same key as middle "2." so the uniqueness check (which compares
+    // both keys and labels) prevents picking "2." in both columns at
+    // once. Saved data using the legacy "2-close" key still resolves
+    // to the same label so existing charts upgrade transparently.
+    { key: "2", label: "2." },
     { key: "lastX", label: "Last X." },
     ...NAMED,
   ],
@@ -61,5 +65,5 @@ export function findVoltaPreset(key: string): VoltaPreset | undefined {
 /** The default preset to suggest as the FIRST volta in an empty region. */
 export const DEFAULT_OPENING_PRESET: VoltaPreset = { key: "1", label: "1." }
 
-/** The default preset to suggest as the second auto-created volta. */
-export const DEFAULT_CLOSING_PRESET: VoltaPreset = { key: "2-close", label: "2." }
+/** The default preset to suggest as the second auto-created ending. */
+export const DEFAULT_CLOSING_PRESET: VoltaPreset = { key: "2", label: "2." }

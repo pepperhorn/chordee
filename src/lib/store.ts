@@ -14,6 +14,7 @@ import type {
   ChartMeta,
 } from "./schema"
 import { ChordChartSchema } from "./schema"
+import { pruneOrphanedVoltas } from "./voltaState"
 import { buildUserStyle, UserStyleSchema, type UserStyle } from "./userStyle"
 import {
   createBeat,
@@ -51,6 +52,14 @@ export interface EditorUIState {
   toast: { message: string; type: "info" | "warning" | "error"; id: number } | null
   activePluginPanel: string | null
   enabledPlugins: string[]
+  /** When set, the chart-level Ending picker is rendered anchored at
+   *  `anchorRect`. Stored centrally so only one picker exists at a time
+   *  (instead of every BarGroup carrying its own open-state). */
+  endingPicker: {
+    sectionId: string
+    measureId: string
+    anchorRect: { left: number; top: number; width: number; height: number }
+  } | null
 }
 
 // ── History ────────────────────────────────────────────────────────────
@@ -84,7 +93,20 @@ export interface ChartState {
   // Measure operations
   addMeasure: (sectionId: string) => void
   updateMeasure: (sectionId: string, measureId: string, updates: Partial<Measure>) => void
+  /** Apply multiple measure updates as a single mutation (one undo entry). */
+  updateMeasures: (
+    description: string,
+    edits: Array<{ sectionId: string; measureId: string; updates: Partial<Measure> }>,
+  ) => void
   deleteMeasure: (sectionId: string, measureId: string) => void
+
+  // Ending picker
+  openEndingPicker: (
+    sectionId: string,
+    measureId: string,
+    anchorRect: { left: number; top: number; width: number; height: number },
+  ) => void
+  closeEndingPicker: () => void
 
   // Beat operations
   updateBeat: (sectionId: string, measureId: string, beatId: string, updates: Partial<Beat>) => void
@@ -165,6 +187,10 @@ export const useChartStore = create<ChartState>()(
       saveHistory(description)
       const chart = deepClone(get().chart)
       mutator(chart)
+      // After every mutation, sweep endings whose region was deleted,
+      // unpaired, or had its repeatRegionId cleared. Cheap (one chart
+      // walk) and means callers never have to think about orphans.
+      pruneOrphanedVoltas(chart)
       set({ chart })
     }
 
@@ -191,6 +217,7 @@ export const useChartStore = create<ChartState>()(
         toast: null,
         activePluginPanel: null,
         enabledPlugins: ["playback"],
+        endingPicker: null,
       },
       history: [],
       historyIndex: -1,
@@ -269,6 +296,28 @@ export const useChartStore = create<ChartState>()(
           const measure = findMeasure(section, measureId)
           if (measure) Object.assign(measure, updates)
         })
+      },
+
+      updateMeasures: (description, edits) => {
+        if (edits.length === 0) return
+        mutateChart(description, (chart) => {
+          for (const edit of edits) {
+            const section = findSection(chart, edit.sectionId)
+            if (!section) continue
+            const measure = findMeasure(section, edit.measureId)
+            if (measure) Object.assign(measure, edit.updates)
+          }
+        })
+      },
+
+      openEndingPicker: (sectionId, measureId, anchorRect) => {
+        set((state) => ({
+          ui: { ...state.ui, endingPicker: { sectionId, measureId, anchorRect } },
+        }))
+      },
+
+      closeEndingPicker: () => {
+        set((state) => ({ ui: { ...state.ui, endingPicker: null } }))
       },
 
       deleteMeasure: (sectionId, measureId) => {

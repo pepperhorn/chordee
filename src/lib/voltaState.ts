@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react"
 import type { ChordChart, Measure, Volta } from "./schema"
-import { findVoltaPreset, VOLTA_PRESETS, type VoltaPreset } from "./voltaPresets"
+import { VOLTA_PRESETS, type VoltaPreset } from "./voltaPresets"
 
 /**
  * A repeat region — bounded by a measure with `barlineStart === "repeatStart"`
@@ -143,34 +143,57 @@ export function findMeasureAfterRegion(
   return null
 }
 
-/** The set of preset keys already taken in a region. */
+/** Both the preset keys AND the trimmed display labels already taken in
+ *  a region. The picker uses this for "already used" detection: a button
+ *  is disabled if either its key OR its label is already in use, which
+ *  catches cases where two presets across columns share a label (e.g.
+ *  middle "2." vs the legacy closing "2-close" / "2.") and free-text
+ *  edits that happen to collide with another preset's label. */
+export interface TakenPresets {
+  keys: Set<string>
+  labels: Set<string>
+}
+
 export function takenPresetKeys(
   chart: ChordChart,
   region: RepeatRegion,
-): Set<string> {
-  const taken = new Set<string>()
+): TakenPresets {
+  const keys = new Set<string>()
+  const labels = new Set<string>()
   for (const v of listVoltasInRegion(chart, region)) {
-    if (v.volta.presetKey) taken.add(v.volta.presetKey)
+    if (v.volta.presetKey) keys.add(v.volta.presetKey)
+    const trimmed = v.volta.label.trim()
+    if (trimmed) labels.add(trimmed)
   }
-  return taken
+  return { keys, labels }
 }
 
 /** Return the suggested next preset to insert into the region, given how
- *  many voltas have already been placed. The picker uses this to focus
- *  the right column / button by default. */
+ *  many endings have already been placed and (optionally) which bar the
+ *  picker is targeting. If the target bar is the closing position (the
+ *  region's last bar OR the bar immediately after the close-repeat), the
+ *  closing column is preferred; otherwise the middle column is. */
 export function suggestNextPreset(
   chart: ChordChart,
   region: RepeatRegion,
+  targetMeasureId?: string,
 ): VoltaPreset {
-  const taken = takenPresetKeys(chart, region)
+  const { keys: takenKeys, labels: takenLabels } = takenPresetKeys(chart, region)
   const existing = listVoltasInRegion(chart, region)
   if (existing.length === 0) {
     return VOLTA_PRESETS.opening[0]! // "1."
   }
-  // Walk closing column for an unused option, then middle, then opening.
-  for (const col of [VOLTA_PRESETS.closing, VOLTA_PRESETS.middle, VOLTA_PRESETS.opening]) {
+  const after = findMeasureAfterRegion(chart, region)
+  const isAtClosing =
+    !!targetMeasureId &&
+    (targetMeasureId === region.endMeasureId ||
+      after?.measureId === targetMeasureId)
+  const cols = isAtClosing
+    ? [VOLTA_PRESETS.closing, VOLTA_PRESETS.middle, VOLTA_PRESETS.opening]
+    : [VOLTA_PRESETS.middle, VOLTA_PRESETS.closing, VOLTA_PRESETS.opening]
+  for (const col of cols) {
     for (const p of col) {
-      if (!taken.has(p.key)) return p
+      if (!takenKeys.has(p.key) && !takenLabels.has(p.label.trim())) return p
     }
   }
   return VOLTA_PRESETS.middle[0]!
@@ -181,8 +204,64 @@ export function generateRepeatRegionId(): string {
   return `rr-${Math.random().toString(36).slice(2, 9)}`
 }
 
-// Re-export for callers that want to format a saved volta
-export { findVoltaPreset }
+/** Returns the set of regionIds that are currently "closed" — i.e. have a
+ *  matching `repeatStart` opener (with `repeatRegionId`) AND a matching
+ *  `repeatEnd` closer. Endings whose regionId isn't in this set are
+ *  orphans (their region was deleted, broken, or unpaired). */
+export function findClosedRegionIds(chart: ChordChart): Set<string> {
+  const closed = new Set<string>()
+  for (const region of findRepeatRegions(chart)) {
+    closed.add(region.regionId)
+  }
+  return closed
+}
+
+/** Mutating helper. Strips `volta` from any measure whose regionId no
+ *  longer corresponds to a closed region. Called automatically by the
+ *  store after every chart mutation so endings can never outlive their
+ *  region (which previously left ghost brackets sprawling across the
+ *  chart with no way to edit or remove them). */
+export function pruneOrphanedVoltas(chart: ChordChart): void {
+  const valid = findClosedRegionIds(chart)
+  for (const section of chart.sections) {
+    for (const measure of section.measures) {
+      if (measure.volta && !valid.has(measure.volta.regionId)) {
+        delete (measure as Measure).volta
+      }
+    }
+  }
+}
+
+/** Build a Map<measureId, RepeatRegion> covering every bar that lies
+ *  inside a region OR holds an "outside" closing ending (the bar
+ *  immediately after the close-repeat). Computed once per chart by
+ *  ChartSVG and threaded via context so individual BarGroups don't each
+ *  walk the chart on every render. */
+export function computeRegionMap(
+  chart: ChordChart,
+): Map<string, RepeatRegion> {
+  const map = new Map<string, RepeatRegion>()
+  const regions = findRepeatRegions(chart)
+  for (const region of regions) {
+    for (const m of region.measures) {
+      map.set(m.measureId, region)
+    }
+  }
+  // Voltas placed outside the region (typically the closing ending in
+  // the bar immediately after the close-repeat) still belong to the
+  // region — index them so click handlers can resolve back to it.
+  for (const section of chart.sections) {
+    for (const measure of section.measures) {
+      if (measure.volta && !map.has(measure.id)) {
+        const region = regions.find(
+          (r) => r.regionId === measure.volta!.regionId,
+        )
+        if (region) map.set(measure.id, region)
+      }
+    }
+  }
+  return map
+}
 
 // ── Per-bar volta slice ─────────────────────────────────────────────────
 
@@ -213,6 +292,11 @@ export interface VoltaSlice {
    *  Callers use this to suppress the right-side tick since the close-repeat
    *  visually closes the bracket. */
   endsAtRepeat: boolean
+  /** The bar that owns the volta object (the absolute first bar of the
+   *  slice). Click handlers on mid-slice bars use this to route the
+   *  picker back to the bar that holds the volta. */
+  ownerSectionId: string
+  ownerMeasureId: string
 }
 
 /**
@@ -237,7 +321,8 @@ export function computeVoltaSlices(
   }
 
   for (let i = 0; i < flat.length; i++) {
-    const measure = flat[i]!.measure
+    const owner = flat[i]!
+    const measure = owner.measure
     if (!measure.volta) continue
     const regionId = measure.volta.regionId
 
@@ -262,6 +347,8 @@ export function computeVoltaSlices(
         absoluteStart: k === i,
         absoluteEnd: k === lastIdx,
         endsAtRepeat,
+        ownerSectionId: owner.sectionId,
+        ownerMeasureId: measure.id,
       })
     }
   }
@@ -277,6 +364,19 @@ export const VoltaSlicesContext = createContext<Map<string, VoltaSlice> | null>(
 
 export function useVoltaSlice(measureId: string): VoltaSlice | null {
   const map = useContext(VoltaSlicesContext)
+  if (!map) return null
+  return map.get(measureId) ?? null
+}
+
+/** React context carrying the precomputed measure→region lookup from
+ *  ChartSVG down to BarGroups. Avoids the O(bars²) chart walks that the
+ *  previous per-render `findRegionContaining` calls produced. */
+export const RegionMapContext = createContext<Map<string, RepeatRegion> | null>(
+  null,
+)
+
+export function useRegionFor(measureId: string): RepeatRegion | null {
+  const map = useContext(RegionMapContext)
   if (!map) return null
   return map.get(measureId) ?? null
 }

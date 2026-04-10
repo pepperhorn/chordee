@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from "react"
 import { useChartStore } from "./store"
 import { usePlaybackStore } from "./plugins/playback/playback-store"
+import { findRegionContaining } from "./voltaState"
 import type { LayoutResult, PositionEntry } from "./layout/types"
 
 type Division = "quarter" | "eighth" | "eighthTriplet" | "sixteenth" | "sixteenthTriplet" | "thirtySecond" | "half" | "whole" | "quarterTriplet"
@@ -172,6 +173,35 @@ export function useKeyboardNavigation(layout: LayoutResult | null) {
       if (e.key === "Escape") {
         e.preventDefault()
         setSelection(null)
+        return
+      }
+
+      // v — open Ending picker for the selected measure (only when it's
+      // inside a repeat region). Uses the layout's position map to anchor
+      // the popover at the selected bar's screen rect.
+      if (e.key === "v" && !e.metaKey && !e.ctrlKey && selection?.measureId && selection.sectionId) {
+        const chart = useChartStore.getState().chart
+        const region = findRegionContaining(chart, selection.sectionId, selection.measureId)
+        if (!region) {
+          showToast("Selected bar isn't inside a repeat", "warning")
+          return
+        }
+        e.preventDefault()
+        // Anchor on the selected slot's DOM rect if available, falling
+        // back to the document center.
+        const svg = document.getElementById("chart-area") as SVGSVGElement | null
+        const barEl = svg?.querySelector(
+          `[data-measure-id="${selection.measureId}"]`,
+        ) as SVGGraphicsElement | null
+        const r = barEl?.getBoundingClientRect()
+        const anchorRect = r
+          ? { left: r.left, top: r.top, width: r.width, height: r.height }
+          : { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 1, height: 1 }
+        useChartStore.getState().openEndingPicker(
+          selection.sectionId,
+          selection.measureId,
+          anchorRect,
+        )
         return
       }
 

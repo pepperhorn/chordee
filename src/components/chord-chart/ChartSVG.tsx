@@ -5,7 +5,12 @@ import { SectionHeader } from "./SectionHeader"
 import { useChartStore } from "@/lib/store"
 import { RELATIVE_SIZE_SCALE, type FontConfig } from "@/lib/fonts"
 import { FontConfigOverrideProvider } from "@/lib/fontConfigContext"
-import { computeVoltaSlices, VoltaSlicesContext } from "@/lib/voltaState"
+import {
+  computeVoltaSlices,
+  computeRegionMap,
+  VoltaSlicesContext,
+  RegionMapContext,
+} from "@/lib/voltaState"
 
 interface ChartSVGProps {
   layout: LayoutResult
@@ -35,9 +40,11 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
   const setSelection = useChartStore((s) => s.setSelection)
   const addMeasure = useChartStore((s) => s.addMeasure)
 
-  // Precompute volta slices once per chart change — cheaper than each
-  // BarGroup walking the chart on every render.
+  // Precompute ending slices and the measure→region lookup once per
+  // chart change — cheaper than each BarGroup walking the chart on every
+  // render (the per-render walk used to be O(bars²)).
   const voltaSlices = useMemo(() => computeVoltaSlices(chart), [chart])
+  const regionMap = useMemo(() => computeRegionMap(chart), [chart])
 
   // For each section, remember the last bar rendered (by line + rect) so we
   // can draw a "+ add bar" affordance at its right edge.
@@ -102,6 +109,7 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
 
   return (
     <FontConfigOverrideProvider value={fontConfigOverride ?? null}>
+    <RegionMapContext.Provider value={regionMap}>
     <VoltaSlicesContext.Provider value={voltaSlices}>
     <svg
       id="chart-area"
@@ -270,6 +278,7 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
       )}
     </svg>
     </VoltaSlicesContext.Provider>
+    </RegionMapContext.Provider>
     </FontConfigOverrideProvider>
   )
 }
