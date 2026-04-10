@@ -40,6 +40,12 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
   const showClefSetting = useChartStore((s) => s.chart.meta.showClef ?? true)
   const chartKey = useChartStore((s) => s.chart.meta.key)
 
+  // Region lookup comes from a precomputed Map threaded via context
+  // (see ChartSVG → RegionMapContext) instead of walking the chart on
+  // every render.
+  const liveRegion = useRegionFor(bar.measureId)
+  const voltaSlice = useVoltaSlice(bar.measureId)
+
   // "Don't forget to close this repeat" hint — only on the offending bar.
   // Pulled from live store state instead of subscribing to the whole chart.
   const startBarUnclosed = useChartStore((s) =>
@@ -53,25 +59,21 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
       : false,
   )
   // "Add an ending OR new start repeat" hint — fires when a close-repeat
-  // ended up with no opener (typically because the user dropped a new
-  // close-repeat in front of an existing one, leaving the later close
-  // dangling).
-  const startBarOrphanEnd = useChartStore((s) =>
+  // has no opener anywhere in the chart. Multi-close scenarios (each
+  // close delimits an ending) are NOT orphans and don't trigger the hint.
+  // Also suppressed when the bar is already part of an ending structure.
+  const startBarOrphanEndRaw = useChartStore((s) =>
     bar.startBarline === "repeatEnd"
       ? isOrphanedRepeatEnd(s.chart, bar.sectionId, bar.measureId, "start")
       : false,
   )
-  const endBarOrphanEnd = useChartStore((s) =>
+  const endBarOrphanEndRaw = useChartStore((s) =>
     bar.endBarline === "repeatEnd"
       ? isOrphanedRepeatEnd(s.chart, bar.sectionId, bar.measureId, "end")
       : false,
   )
-
-  // Region lookup comes from a precomputed Map threaded via context
-  // (see ChartSVG → RegionMapContext) instead of walking the chart on
-  // every render.
-  const liveRegion = useRegionFor(bar.measureId)
-  const voltaSlice = useVoltaSlice(bar.measureId)
+  const startBarOrphanEnd = startBarOrphanEndRaw && !voltaSlice
+  const endBarOrphanEnd = endBarOrphanEndRaw && !voltaSlice
 
   /** Open the chart-level Ending picker anchored at the clicked element.
    *  Resolves the *owner* bar — for mid-slice clicks the picker still
@@ -98,9 +100,14 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
   const cycleStartBarline = (e?: React.MouseEvent<SVGElement>) => {
     const liveChart = useChartStore.getState().chart
     // Tapping inside a region opens the ending picker instead of cycling,
-    // unless the current style is the region's marker (repeatStart/End).
+    // BUT only when the bar isn't already covered by an ending bracket.
+    // Bars with an existing slice fall through to normal cycling so the
+    // user can add close-repeats inside an existing ending (needed to
+    // split a 2nd ending into 2nd + 3rd). To edit an existing ending,
+    // click the bracket itself.
     if (
       liveRegion &&
+      !voltaSlice &&
       bar.startBarline !== "repeatStart" &&
       bar.startBarline !== "repeatEnd" &&
       e
@@ -123,6 +130,7 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
     const liveChart = useChartStore.getState().chart
     if (
       liveRegion &&
+      !voltaSlice &&
       bar.endBarline !== "repeatStart" &&
       bar.endBarline !== "repeatEnd" &&
       e
@@ -343,7 +351,10 @@ function VoltaBracket({ slice, width, y, onClick }: VoltaBracketProps) {
   // configuration (previously hardcoded to PetalumaScript).
   const chordFont = useFontConfigField("chord")
   const showLeftTick = slice.absoluteStart
-  const showRightTick = slice.absoluteEnd
+  // Suppress the right-side tick on open-ended brackets — the "final"
+  // ending of a multi-ending structure has no close-repeat at its edge
+  // and should visually trail off rather than close.
+  const showRightTick = slice.absoluteEnd && !slice.openEnd
   return (
     <g className="ending-bracket" onClick={onClick} cursor="pointer">
       {/* Invisible hit area covering the top line + label band so the

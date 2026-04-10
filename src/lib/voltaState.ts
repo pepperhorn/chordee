@@ -1,6 +1,11 @@
 import { createContext, useContext } from "react"
 import type { ChordChart, Measure, Volta } from "./schema"
-import { VOLTA_PRESETS, type VoltaPreset } from "./voltaPresets"
+import {
+  VOLTA_PRESETS,
+  type VoltaPreset,
+  parseVoltaOrdinals,
+  presetForOrdinal,
+} from "./voltaPresets"
 
 /**
  * A repeat region — bounded by a measure with `barlineStart === "repeatStart"`
@@ -179,15 +184,20 @@ export function findMeasureAfterRegion(
   return null
 }
 
-/** Both the preset keys AND the trimmed display labels already taken in
- *  a region. The picker uses this for "already used" detection: a button
- *  is disabled if either its key OR its label is already in use, which
- *  catches cases where two presets across columns share a label (e.g.
- *  middle "2." vs the legacy closing "2-close" / "2.") and free-text
- *  edits that happen to collide with another preset's label. */
+/** Everything already "taken" by endings in a region. Used by the picker
+ *  to disable presets and by `suggestNextPreset` to pick a sensible next
+ *  ordinal.
+ *
+ *  - `keys` — stable preset keys
+ *  - `labels` — trimmed display labels (catches cross-column collisions
+ *    and free-text edits)
+ *  - `ordinals` — numeric ending numbers parsed out of labels, so
+ *    `"1., 2."` as the opening ending blocks the picker from offering
+ *    "1." or "2." as the next ending and suggests "3." instead. */
 export interface TakenPresets {
   keys: Set<string>
   labels: Set<string>
+  ordinals: Set<number>
 }
 
 export function takenPresetKeys(
@@ -196,29 +206,51 @@ export function takenPresetKeys(
 ): TakenPresets {
   const keys = new Set<string>()
   const labels = new Set<string>()
+  const ordinals = new Set<number>()
   for (const v of listVoltasInRegion(chart, region)) {
     if (v.volta.presetKey) keys.add(v.volta.presetKey)
     const trimmed = v.volta.label.trim()
     if (trimmed) labels.add(trimmed)
+    for (const n of parseVoltaOrdinals(v.volta.label)) {
+      ordinals.add(n)
+    }
   }
-  return { keys, labels }
+  return { keys, labels, ordinals }
 }
 
-/** Return the suggested next preset to insert into the region, given how
- *  many endings have already been placed and (optionally) which bar the
- *  picker is targeting. If the target bar is the closing position (the
- *  region's last bar OR the bar immediately after the close-repeat), the
- *  closing column is preferred; otherwise the middle column is. */
+/** Return the suggested next preset to insert into the region.
+ *
+ *  The suggestion is driven by parsed ordinals: whatever numbers have
+ *  already appeared in existing ending labels are "taken," so the
+ *  smallest unused ordinal (≥ 1) becomes the next preset. Examples:
+ *    - Empty region → "1."
+ *    - "1." taken → "2."
+ *    - "1., 2." taken (opening ending covers both passes) → "3."
+ *    - "1.", "2.", "3." taken → "4."
+ *
+ *  When no numeric ordinals exist (e.g. the user only has named
+ *  endings like "Vamp"), fall back to the first unused preset in the
+ *  column order that matches the target bar's position. */
 export function suggestNextPreset(
   chart: ChordChart,
   region: RepeatRegion,
   targetMeasureId?: string,
 ): VoltaPreset {
-  const { keys: takenKeys, labels: takenLabels } = takenPresetKeys(chart, region)
+  const taken = takenPresetKeys(chart, region)
   const existing = listVoltasInRegion(chart, region)
   if (existing.length === 0) {
     return VOLTA_PRESETS.opening[0]! // "1."
   }
+
+  // Ordinal-first suggestion — find the smallest unused number ≥ 1.
+  if (taken.ordinals.size > 0) {
+    let n = 1
+    while (taken.ordinals.has(n)) n++
+    return presetForOrdinal(n)
+  }
+
+  // Fallback: no ordinals in the region, fall through to column-order
+  // scanning (same as before).
   const after = findMeasureAfterRegion(chart, region)
   const isAtClosing =
     !!targetMeasureId &&
@@ -229,7 +261,7 @@ export function suggestNextPreset(
     : [VOLTA_PRESETS.middle, VOLTA_PRESETS.closing, VOLTA_PRESETS.opening]
   for (const col of cols) {
     for (const p of col) {
-      if (!takenKeys.has(p.key) && !takenLabels.has(p.label.trim())) return p
+      if (!taken.keys.has(p.key) && !taken.labels.has(p.label.trim())) return p
     }
   }
   return VOLTA_PRESETS.middle[0]!
@@ -342,6 +374,10 @@ export interface VoltaSlice {
    *  inset the right edge of secondary endings so they pull back from
    *  the bar boundary, separating them visually from what follows. */
   isSecondary: boolean
+  /** True when the bracket has no close-repeat at its right edge — the
+   *  "final" ending of a multi-ending structure is open-ended (no
+   *  vertical close tick) because the music simply continues. */
+  openEnd: boolean
   /** The bar that owns the volta object (the absolute first bar of the
    *  slice). Click handlers on mid-slice bars use this to route the
    *  picker back to the bar that holds the volta. */
@@ -404,6 +440,25 @@ export function computeVoltaSlices(
   // know the two brackets abut and need a visual gap.
   const prevEndByRegion = new Map<string, number>()
 
+  // Helpers: does `flat[j]` carry a close-repeat on its right edge,
+  // either stored as its own barlineEnd or as the next bar's barlineStart?
+  const rightEdgeIsClose = (j: number): boolean => {
+    if (j < 0 || j >= flat.length) return false
+    if (flat[j]!.measure.barlineEnd === "repeatEnd") return true
+    if (j + 1 < flat.length && flat[j + 1]!.measure.barlineStart === "repeatEnd") return true
+    return false
+  }
+
+  // Scan forward from `from` up to `hardStop` (inclusive) for the first
+  // bar whose RIGHT edge is a close-repeat. Returns -1 if none found.
+  // Used to find where a 2nd+ ending's bracket should terminate.
+  const findNextCloseRightEdge = (from: number, hardStop: number): number => {
+    for (let j = from; j <= hardStop && j < flat.length; j++) {
+      if (rightEdgeIsClose(j)) return j
+    }
+    return -1
+  }
+
   // Track how many voltas we've already emitted per region so we can
   // mark every bar of the 2nd+ ending as "secondary" — the bracket
   // renderer uses that to inset left/right edges for visual separation
@@ -426,17 +481,37 @@ export function computeVoltaSlices(
       }
     }
 
-    // Determine the natural boundary for this bracket:
     const insideRegion = regionMeasureIds.get(regionId)?.has(measure.id) ?? false
+    // Hard stop for the forward scan — never cross into the next volta
+    // (same region) or out of the current section.
+    const sectionEnd = sectionLastIdx.get(owner.sectionId) ?? i
+    const hardStop = nextVoltaIdx !== -1 ? nextVoltaIdx - 1 : sectionEnd
+
+    // Determine the natural boundary for this bracket.
     let boundaryIdx: number
-    if (nextVoltaIdx !== -1) {
-      boundaryIdx = nextVoltaIdx - 1
-    } else if (insideRegion) {
-      // Inside the region — cap at the region's close-repeat bar.
-      boundaryIdx = regionEndIdx.get(regionId) ?? i
+    let openEnd = false
+
+    if (insideRegion) {
+      // 1st (inside-region) ending: extend to the next volta or to the
+      // region's close-repeat bar — whichever comes first. This is the
+      // "classical" extent that always terminates with a close-repeat.
+      if (nextVoltaIdx !== -1) {
+        boundaryIdx = nextVoltaIdx - 1
+      } else {
+        boundaryIdx = regionEndIdx.get(regionId) ?? i
+      }
     } else {
-      // Outside the region (closing ending) — cap at the section end.
-      boundaryIdx = sectionLastIdx.get(owner.sectionId) ?? i
+      // 2nd+ (outside-region) ending: default to a SINGLE bar and open
+      // right edge. If the user adds a close-repeat anywhere between
+      // the volta's start bar and the next volta / section end, the
+      // bracket extends to that close-repeat and gains a right tick.
+      const closeIdx = findNextCloseRightEdge(i, hardStop)
+      if (closeIdx !== -1) {
+        boundaryIdx = closeIdx
+      } else {
+        boundaryIdx = i // single bar
+        openEnd = true
+      }
     }
 
     const lastIdx = Math.max(i, boundaryIdx)
@@ -457,6 +532,7 @@ export function computeVoltaSlices(
         endsAtRepeat,
         abutsPrevious: k === i ? abutsPrevious : false,
         isSecondary,
+        openEnd,
         ownerSectionId: owner.sectionId,
         ownerMeasureId: measure.id,
       })

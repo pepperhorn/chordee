@@ -62,6 +62,37 @@ export function findVoltaPreset(key: string): VoltaPreset | undefined {
   return undefined
 }
 
+/**
+ * Extract the ending ordinal numbers from a volta label so the
+ * numbering logic can track which endings are "taken" in a region.
+ *
+ *   "1."          → [1]
+ *   "2."          → [2]
+ *   "1., 2."      → [1, 2]       (opening ending that covers passes 1 + 2)
+ *   "1., 2., 3."  → [1, 2, 3]
+ *   "Last X."     → []           (named, no ordinal)
+ *   "Vamp"        → []
+ *
+ * `suggestNextPreset` uses this to offer "3." after the user picks
+ * "1., 2." instead of silently repeating "2.".
+ */
+export function parseVoltaOrdinals(label: string): number[] {
+  const matches = label.match(/\d+/g)
+  if (!matches) return []
+  return matches.map((m) => parseInt(m, 10)).filter((n) => !Number.isNaN(n))
+}
+
+/** Build a preset for a given ordinal, using an existing VOLTA_PRESETS
+ *  entry when one matches, otherwise synthesizing a fresh `{ key, label }`. */
+export function presetForOrdinal(n: number): VoltaPreset {
+  const labelStr = `${n}.`
+  for (const col of [VOLTA_PRESETS.middle, VOLTA_PRESETS.closing, VOLTA_PRESETS.opening]) {
+    const match = col.find((p) => p.label === labelStr)
+    if (match) return match
+  }
+  return { key: `${n}`, label: labelStr }
+}
+
 /** The default preset to suggest as the FIRST volta in an empty region. */
 export const DEFAULT_OPENING_PRESET: VoltaPreset = { key: "1", label: "1." }
 

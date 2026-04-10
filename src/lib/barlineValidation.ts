@@ -44,11 +44,37 @@ export function countOpenRepeatsBefore(
   return count
 }
 
+/** Returns true if any `repeatStart` exists earlier in the chart than
+ *  the given position. Used to allow a `repeatEnd` even when the strict
+ *  open-count has already been consumed by an earlier close — that's
+ *  how multi-ending structures work: one opener, several closers,
+ *  each delimiting a different ending. */
+export function hasRepeatStartBefore(
+  chart: ChordChart,
+  sectionId: string,
+  measureId: string,
+  side: "start" | "end",
+): boolean {
+  for (const section of chart.sections) {
+    for (const measure of section.measures) {
+      const isTarget = section.id === sectionId && measure.id === measureId
+      if (isTarget && side === "start") return false
+      if (measure.barlineStart === "repeatStart") return true
+      if (isTarget && side === "end") return false
+      if (measure.barlineEnd === "repeatStart") return true
+    }
+  }
+  return false
+}
+
 /**
  * Returns the set of barline styles that are valid at the given position,
- * enforcing the "no nested repeats" rule:
+ * enforcing the "no nested repeats" rule and allowing multi-ending
+ * structures:
  *   - `repeatStart` is only valid when no repeat is currently open above.
- *   - `repeatEnd`   is only valid when a repeat IS currently open above.
+ *   - `repeatEnd`   is valid whenever some `repeatStart` exists earlier
+ *     in the chart — this permits multiple closing barlines for
+ *     one opener, each delimiting a different ending bracket.
  *   - `single`, `double`, `final` are always valid.
  */
 export function validBarlineStylesAt(
@@ -60,7 +86,9 @@ export function validBarlineStylesAt(
   const open = countOpenRepeatsBefore(chart, sectionId, measureId, side)
   const valid = new Set<BarlineStyle>(["single", "double", "final"])
   if (open === 0) valid.add("repeatStart")
-  if (open > 0) valid.add("repeatEnd")
+  if (hasRepeatStartBefore(chart, sectionId, measureId, side)) {
+    valid.add("repeatEnd")
+  }
   return valid
 }
 
@@ -84,11 +112,11 @@ export function cycleBarlineStyle(
 }
 
 /**
- * Returns true if a `repeatEnd` at this position has no matching
- * `repeatStart` opener earlier in the chart — i.e., it's an orphan
- * caused by the user dropping a new close-repeat in front of an
- * existing one. Used to surface a "this close-repeat needs an ending
- * bracket OR a fresh start-repeat" hint.
+ * Returns true if a `repeatEnd` at this position has no `repeatStart`
+ * anywhere earlier in the chart — i.e., it's a truly orphaned close.
+ * (Multiple close-repeats for one opener are fine; what's broken is a
+ * close-repeat with no opener at all.) Used to surface a "this
+ * close-repeat needs an ending bracket OR a fresh start-repeat" hint.
  */
 export function isOrphanedRepeatEnd(
   chart: ChordChart,
@@ -96,7 +124,7 @@ export function isOrphanedRepeatEnd(
   measureId: string,
   side: "start" | "end",
 ): boolean {
-  return countOpenRepeatsBefore(chart, sectionId, measureId, side) === 0
+  return !hasRepeatStartBefore(chart, sectionId, measureId, side)
 }
 
 /**

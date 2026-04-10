@@ -7,11 +7,19 @@ import {
   findMeasureAfterRegion,
   type TakenPresets,
 } from "@/lib/voltaState"
-import { DEFAULT_CLOSING_PRESET, type VoltaPreset } from "@/lib/voltaPresets"
+import {
+  parseVoltaOrdinals,
+  presetForOrdinal,
+  type VoltaPreset,
+} from "@/lib/voltaPresets"
 import { VoltaPicker } from "./VoltaPicker"
 import type { Volta } from "@/lib/schema"
 
-const EMPTY_TAKEN: TakenPresets = { keys: new Set(), labels: new Set() }
+const EMPTY_TAKEN: TakenPresets = {
+  keys: new Set(),
+  labels: new Set(),
+  ordinals: new Set(),
+}
 const DEFAULT_SUGGESTED: VoltaPreset = { key: "1", label: "1." }
 
 /**
@@ -80,33 +88,31 @@ export function EndingPickerHost() {
       },
     ]
 
-    // First-ending auto-create: stamp a "2." closing ending in the bar
+    // First-ending auto-create: stamp a closing ending in the bar
     // immediately after the close-repeat — but only when that bar is in
     // the same section (otherwise we'd silently spill into the next
-    // section, which is surprising), and only when the closing key/label
-    // isn't already taken.
+    // section, which is surprising). The closing ordinal is derived
+    // from the ordinals the user just picked: picking "1." auto-creates
+    // "2."; picking "1., 2." auto-creates "3." (since ordinals 1 and 2
+    // are already covered by the opening bracket).
     const wasFirst = listVoltasInRegion(chart, region).length === 0
     if (wasFirst) {
       const next = findMeasureAfterRegion(chart, region)
       if (next && next.sectionId === region.endSectionId) {
-        const liveTaken = takenPresetKeys(chart, region)
-        const closing = DEFAULT_CLOSING_PRESET
-        if (
-          !liveTaken.keys.has(closing.key) &&
-          !liveTaken.labels.has(closing.label.trim())
-        ) {
-          edits.push({
-            sectionId: next.sectionId,
-            measureId: next.measureId,
-            updates: {
-              volta: {
-                regionId: region.regionId,
-                label: closing.label,
-                presetKey: closing.key,
-              },
+        const pickedOrdinals = parseVoltaOrdinals(finalLabel)
+        const maxPicked = pickedOrdinals.length > 0 ? Math.max(...pickedOrdinals) : 1
+        const closing = presetForOrdinal(maxPicked + 1)
+        edits.push({
+          sectionId: next.sectionId,
+          measureId: next.measureId,
+          updates: {
+            volta: {
+              regionId: region.regionId,
+              label: closing.label,
+              presetKey: closing.key,
             },
-          })
-        }
+          },
+        })
       }
     }
 

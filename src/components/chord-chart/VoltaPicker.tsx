@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   VOLTA_PRESETS,
+  parseVoltaOrdinals,
   type VoltaPreset,
 } from "@/lib/voltaPresets"
 import type { TakenPresets } from "@/lib/voltaState"
@@ -85,13 +86,29 @@ export function VoltaPicker({
     onOpenChange(false)
   }
 
-  /** A button is "taken" if either its preset key OR its display label
-   *  is already used by another ending in the region. The current
-   *  ending's own key/label is excluded so editing is allowed. */
+  // The current ending's own ordinals — excluded from "taken" so the
+  // user can keep / refine the ordinals that are already theirs.
+  const currentOrdinals = current ? parseVoltaOrdinals(current.label) : []
+
+  /** A button is "taken" if any of the following collide with the
+   *  region's existing endings:
+   *   - its preset key is already used,
+   *   - its display label is already used,
+   *   - OR any ordinal number in its label is already claimed by
+   *     another ending (so picking "1., 2." blocks "1." and "2.",
+   *     and having "1." + "2." blocks "1., 2.").
+   *  The current ending's own keys/labels/ordinals are excluded so
+   *  editing the active preset is still possible. */
   const isTaken = (p: VoltaPreset): boolean => {
     if (p.key === current?.presetKey) return false
     if (p.label.trim() === current?.label.trim()) return false
-    return taken.keys.has(p.key) || taken.labels.has(p.label.trim())
+    if (taken.keys.has(p.key)) return true
+    if (taken.labels.has(p.label.trim())) return true
+    const presetOrdinals = parseVoltaOrdinals(p.label)
+    for (const n of presetOrdinals) {
+      if (taken.ordinals.has(n) && !currentOrdinals.includes(n)) return true
+    }
+    return false
   }
 
   const renderColumn = (
