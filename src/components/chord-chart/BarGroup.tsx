@@ -300,7 +300,7 @@ function VoltaBracket({ slice, width, y, onClick }: VoltaBracketProps) {
   // configuration (previously hardcoded to PetalumaScript).
   const chordFont = useFontConfigField("chord")
   const showLeftTick = slice.absoluteStart
-  const showRightTick = slice.absoluteEnd && !slice.endsAtRepeat
+  const showRightTick = slice.absoluteEnd
   return (
     <g className="ending-bracket" onClick={onClick} cursor="pointer">
       {/* Invisible hit area covering the top line + label band so the
