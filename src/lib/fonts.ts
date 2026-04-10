@@ -79,16 +79,22 @@ export const DEFAULT_FONT_CONFIG: FontConfig = {
 }
 
 export const FONT_FAMILIES = [
-  { value: "PetalumaScript", label: "Petaluma Script (Handwritten)" },
-  { value: "Petaluma", label: "Petaluma (Notation)" },
-  { value: "PetalumaText", label: "Petaluma Text" },
-  { value: "Bravura", label: "Bravura (Classical)" },
-  { value: "BravuraText", label: "Bravura Text" },
-  { value: "Inter, system-ui, sans-serif", label: "Inter (System)" },
-  { value: "Georgia, serif", label: "Georgia (Serif)" },
+  { value: "PetalumaScript", label: "Petaluma Script (Handwritten)", notation: false },
+  { value: "Petaluma", label: "Petaluma (Notation)", notation: true },
+  { value: "PetalumaText", label: "Petaluma Text", notation: false },
+  { value: "Bravura", label: "Bravura (Classical)", notation: true },
+  { value: "BravuraText", label: "Bravura Text", notation: false },
+  { value: "Inter, system-ui, sans-serif", label: "Inter (System)", notation: false },
+  { value: "Georgia, serif", label: "Georgia (Serif)", notation: false },
 ] as const
 
 export type FontFamily = (typeof FONT_FAMILIES)[number]["value"]
+
+/** Notation-capable fonts only — SMuFL families that actually ship the
+ *  clef, barline, accidental, and repeat glyphs. Used to restrict the
+ *  font picker for fields that MUST render notation symbols (clef, key
+ *  signature, barlines); the other font slots can use any family. */
+export const NOTATION_FONT_FAMILIES = FONT_FAMILIES.filter((f) => f.notation)
 
 /** Build CSS font shorthand strings from FontConfig for use with Pretext */
 export function buildFontStrings(

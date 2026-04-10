@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { useChartStore } from "@/lib/store"
-import { FONT_FAMILIES, RELATIVE_SIZES, type RelativeSize } from "@/lib/fonts"
+import { FONT_FAMILIES, NOTATION_FONT_FAMILIES, RELATIVE_SIZES, type RelativeSize } from "@/lib/fonts"
 import { buildUserStyle, parseUserStyle } from "@/lib/userStyle"
 import { downloadFile, uploadFile } from "@/lib/io"
 import { BARLINE_TYPES, DYNAMICS, SECTION_PRESETS, TIME_SIGNATURES, NAVIGATION_TYPES } from "@/lib/constants"
@@ -523,6 +523,12 @@ export function PropertiesPanel() {
                   ] as const
                 ).map(([fontKey, label, sizeKey, colorKey]) => {
                   const isExpanded = !!expandedFonts[fontKey]
+                  // Clef, key signature, and barline MUST come from a
+                  // SMuFL notation font — other families don't ship the
+                  // glyphs. Restrict the picker so users can't pick a
+                  // text font and get tofu.
+                  const notationOnly = fontKey === "clef" || fontKey === "barline"
+                  const families = notationOnly ? NOTATION_FONT_FAMILIES : FONT_FAMILIES
                   return (
                     <div key={fontKey} className="field-group space-y-1.5 rounded-md border border-input/50 p-2">
                       <div className="flex items-center justify-between">
@@ -550,7 +556,7 @@ export function PropertiesPanel() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {FONT_FAMILIES.map((f) => (
+                            {families.map((f) => (
                               <SelectItem key={f.value} value={f.value}>
                                 {f.label}
                               </SelectItem>
