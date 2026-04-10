@@ -99,11 +99,10 @@ export function PropertiesPanel() {
 
       <ScrollArea className="flex-1">
         <Tabs defaultValue="chart" className="w-full">
-          <TabsList className="tab-list mx-3 mt-2 grid h-auto w-[calc(100%-1.5rem)] grid-cols-2 gap-1 p-1">
+          <TabsList className="tab-list mx-3 mt-2 grid h-auto w-[calc(100%-1.5rem)] grid-cols-3 gap-1 p-1">
             <TabsTrigger value="chart" className="tab-chart text-xs">Chart</TabsTrigger>
             <TabsTrigger value="layout" className="tab-layout text-xs">Layout</TabsTrigger>
-            <TabsTrigger value="selection" className="tab-selection text-xs">Selection</TabsTrigger>
-            <TabsTrigger value="controls" className="tab-controls text-xs max-md:hidden">Controls</TabsTrigger>
+            <TabsTrigger value="tools" className="tab-tools text-xs">Tools</TabsTrigger>
           </TabsList>
 
           <TabsContent value="chart" className="chart-tab px-3 pb-4">
@@ -596,11 +595,11 @@ export function PropertiesPanel() {
             </div>
           </TabsContent>
 
-          <TabsContent value="selection" className="selection-tab px-3 pb-4">
-            <div className="pt-2">
+          <TabsContent value="tools" className="tools-tab pb-4">
+            <div className="tools-selection px-3 pt-2">
               {!selection ? (
                 <p className="empty-selection text-sm text-muted-foreground">
-                  Click a beat or slot to select it
+                  Click a beat or slot to edit it
                 </p>
               ) : (
                 <SelectionProperties
@@ -618,9 +617,7 @@ export function PropertiesPanel() {
                 />
               )}
             </div>
-          </TabsContent>
-
-          <TabsContent value="controls" className="controls-tab pb-4 max-md:hidden">
+            <Separator className="my-4" />
             <TouchControls compact />
           </TabsContent>
         </Tabs>
@@ -632,7 +629,7 @@ export function PropertiesPanel() {
 
 // ── Selection-sensitive Properties ─────────────────────────────────────
 
-function SelectionProperties({
+export function SelectionProperties({
   selection,
   chart,
   updateSection,

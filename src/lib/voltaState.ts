@@ -333,6 +333,11 @@ export interface VoltaSlice {
    *  Callers use this to suppress the right-side tick since the close-repeat
    *  visually closes the bracket. */
   endsAtRepeat: boolean
+  /** True when this slice's absoluteStart bar is immediately preceded
+   *  by another ending's absoluteEnd bar — i.e., two brackets abut. The
+   *  renderer insets the left edge by a few pixels so adjacent brackets
+   *  don't touch and get visually distinct. */
+  abutsPrevious: boolean
   /** The bar that owns the volta object (the absolute first bar of the
    *  slice). Click handlers on mid-slice bars use this to route the
    *  picker back to the bar that holds the volta. */
@@ -390,6 +395,11 @@ export function computeVoltaSlices(
     sectionLastIdx.set(flat[j]!.sectionId, j)
   }
 
+  // Track the flat index of the previous volta's last bar, keyed by
+  // regionId — so when the next volta starts exactly one bar later we
+  // know the two brackets abut and need a visual gap.
+  const prevEndByRegion = new Map<string, number>()
+
   for (let i = 0; i < flat.length; i++) {
     const owner = flat[i]!
     const measure = owner.measure
@@ -421,6 +431,8 @@ export function computeVoltaSlices(
     const lastIdx = Math.max(i, boundaryIdx)
     const lastBar = flat[lastIdx]!.measure
     const endsAtRepeat = lastBar.barlineEnd === "repeatEnd"
+    const prevEnd = prevEndByRegion.get(regionId)
+    const abutsPrevious = prevEnd !== undefined && prevEnd === i - 1
 
     for (let k = i; k <= lastIdx; k++) {
       const bar = flat[k]!.measure
@@ -430,10 +442,13 @@ export function computeVoltaSlices(
         absoluteStart: k === i,
         absoluteEnd: k === lastIdx,
         endsAtRepeat,
+        abutsPrevious: k === i ? abutsPrevious : false,
         ownerSectionId: owner.sectionId,
         ownerMeasureId: measure.id,
       })
     }
+
+    prevEndByRegion.set(regionId, lastIdx)
   }
 
   return slices

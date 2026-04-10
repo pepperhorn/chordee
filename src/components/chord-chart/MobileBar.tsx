@@ -4,6 +4,7 @@ import { formatChord, getInheritedChord } from "@/lib/utils"
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 import type { LayoutResult } from "@/lib/layout/types"
 import { TouchControls } from "./TouchControls"
+import { SelectionProperties } from "./PropertiesPanel"
 
 interface MobileBarProps {
   layout: LayoutResult | null
@@ -15,6 +16,17 @@ export function MobileBar({ layout }: MobileBarProps) {
   const selection = useChartStore((s) => s.ui.selection)
   const setSelection = useChartStore((s) => s.setSelection)
   const chart = useChartStore((s) => s.chart)
+  // Store actions needed by SelectionProperties (so mobile gets the
+  // same delete-bar / section-edit affordances as the sidebar).
+  const updateSection = useChartStore((s) => s.updateSection)
+  const setSectionTimeSignature = useChartStore((s) => s.setSectionTimeSignature)
+  const deleteSection = useChartStore((s) => s.deleteSection)
+  const addSection = useChartStore((s) => s.addSection)
+  const updateMeasure = useChartStore((s) => s.updateMeasure)
+  const updateBeat = useChartStore((s) => s.updateBeat)
+  const setBeatDivision = useChartStore((s) => s.setBeatDivision)
+  const addMeasure = useChartStore((s) => s.addMeasure)
+  const deleteMeasure = useChartStore((s) => s.deleteMeasure)
 
   // Auto-expand when a slot is selected on mobile
   const prevSlotId = useRef(selection?.slotId)
@@ -68,7 +80,7 @@ export function MobileBar({ layout }: MobileBarProps) {
           onClick={() => setExpanded(true)}
         >
           <ChevronUp className="h-4 w-4" />
-          Controls
+          Tools
         </button>
       </div>
     )
@@ -106,7 +118,29 @@ export function MobileBar({ layout }: MobileBarProps) {
         </button>
       </div>
 
-      <TouchControls />
+      {/* Scrollable Tools area — Selection properties (including
+          delete-bar) stacked above the TouchControls keyboard. Caps at
+          ~55vh so the keyboard stays above the fold. */}
+      <div className="mobile-kb-tools max-h-[55vh] overflow-y-auto">
+        {selection && (
+          <div className="mobile-kb-selection border-b px-3 py-2">
+            <SelectionProperties
+              selection={selection}
+              chart={chart}
+              updateSection={updateSection}
+              setSectionTimeSignature={setSectionTimeSignature}
+              deleteSection={deleteSection}
+              addSection={addSection}
+              updateMeasure={updateMeasure}
+              updateBeat={updateBeat}
+              setBeatDivision={setBeatDivision}
+              addMeasure={addMeasure}
+              deleteMeasure={deleteMeasure}
+            />
+          </div>
+        )}
+        <TouchControls />
+      </div>
     </div>
   )
 }

@@ -331,6 +331,9 @@ interface VoltaBracketProps {
 function VoltaBracket({ slice, width, y, onClick }: VoltaBracketProps) {
   const TICK_HEIGHT = 8
   const HIT_HEIGHT = 14
+  // Gap inset when this bracket's start bar immediately follows another
+  // ending's end bar — prevents the two brackets from touching.
+  const GAP = slice.abutsPrevious ? 5 : 0
   // Use the chord font so the ending label respects the chart's font
   // configuration (previously hardcoded to PetalumaScript).
   const chordFont = useFontConfigField("chord")
@@ -342,18 +345,19 @@ function VoltaBracket({ slice, width, y, onClick }: VoltaBracketProps) {
           whole bracket is clickable, not just the 1px stroke. */}
       <rect
         className="ending-bracket-hit"
-        x={0}
+        x={GAP}
         y={y - HIT_HEIGHT / 2}
-        width={width}
+        width={Math.max(0, width - GAP)}
         height={HIT_HEIGHT}
         fill="transparent"
         pointerEvents="all"
       />
       {/* Top horizontal line — always spans the full bar width so
-          multi-bar endings appear continuous. */}
+          multi-bar endings appear continuous. Inset on the left when
+          this bracket abuts the previous ending's end. */}
       <line
         className="ending-bracket-top"
-        x1={0}
+        x1={GAP}
         y1={y}
         x2={width}
         y2={y}
@@ -365,9 +369,9 @@ function VoltaBracket({ slice, width, y, onClick }: VoltaBracketProps) {
       {showLeftTick && (
         <line
           className="ending-bracket-tick-left"
-          x1={0}
+          x1={GAP}
           y1={y}
-          x2={0}
+          x2={GAP}
           y2={y + TICK_HEIGHT}
           stroke="currentColor"
           strokeWidth={1.2}
@@ -393,7 +397,7 @@ function VoltaBracket({ slice, width, y, onClick }: VoltaBracketProps) {
       {slice.label && (
         <text
           className="ending-bracket-label"
-          x={5}
+          x={GAP + 5}
           y={y + 11}
           fontSize={11}
           fontFamily={`${chordFont}, serif`}
