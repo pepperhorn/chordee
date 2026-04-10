@@ -13,6 +13,7 @@ import {
   validBarlineStylesAt,
   cycleBarlineStyle,
   isUnclosedRepeatStart,
+  isOrphanedRepeatEnd,
 } from "@/lib/barlineValidation"
 import {
   generateRepeatRegionId,
@@ -49,6 +50,20 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
   const endBarUnclosed = useChartStore((s) =>
     bar.endBarline === "repeatStart"
       ? isUnclosedRepeatStart(s.chart, bar.sectionId, bar.measureId, "end")
+      : false,
+  )
+  // "Add an ending OR new start repeat" hint — fires when a close-repeat
+  // ended up with no opener (typically because the user dropped a new
+  // close-repeat in front of an existing one, leaving the later close
+  // dangling).
+  const startBarOrphanEnd = useChartStore((s) =>
+    bar.startBarline === "repeatEnd"
+      ? isOrphanedRepeatEnd(s.chart, bar.sectionId, bar.measureId, "start")
+      : false,
+  )
+  const endBarOrphanEnd = useChartStore((s) =>
+    bar.endBarline === "repeatEnd"
+      ? isOrphanedRepeatEnd(s.chart, bar.sectionId, bar.measureId, "end")
       : false,
   )
 
@@ -242,6 +257,26 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
             opacity={0.9}
           >
             ↳ don&apos;t forget to close this repeat
+          </text>
+        </g>
+      )}
+
+      {/* Orphan close-repeat hint — fires when a close-repeat has no opener. */}
+      {(startBarOrphanEnd || endBarOrphanEnd) && (
+        <g
+          className="barline-orphan-end-hint"
+          pointerEvents="none"
+          transform={`translate(${startBarOrphanEnd ? 0 : bar.width}, ${-Math.round(24 * chordScale)})`}
+        >
+          <text
+            x={4}
+            y={0}
+            fontSize={10}
+            fontStyle="italic"
+            fill="hsl(var(--destructive))"
+            opacity={0.9}
+          >
+            ↳ add an ending or new start repeat
           </text>
         </g>
       )}

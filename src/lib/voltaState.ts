@@ -24,49 +24,77 @@ export interface RepeatRegion {
 }
 
 /** Walk the chart and resolve every repeat region. Skips repeats with no
- *  matching close (those are flagged separately by `isUnclosedRepeatStart`). */
+ *  matching close (those are flagged separately by `isUnclosedRepeatStart`).
+ *
+ *  A close-repeat barline can be stored either as the END of one measure
+ *  (`barlineEnd === "repeatEnd"`) or as the START of the next measure
+ *  (`barlineStart === "repeatEnd"`) — they describe the same physical
+ *  barline. Both forms are detected here so the picker, slice computer,
+ *  and region map all see the region as closed. */
 export function findRepeatRegions(chart: ChordChart): RepeatRegion[] {
   const regions: RepeatRegion[] = []
   let open: {
     regionId: string
     startSectionId: string
     startMeasureId: string
+    endSectionId: string
+    endMeasureId: string
     measures: Array<{ sectionId: string; measureId: string }>
   } | null = null
+
+  const flushOpen = () => {
+    if (!open) return
+    regions.push({
+      regionId: open.regionId,
+      startSectionId: open.startSectionId,
+      startMeasureId: open.startMeasureId,
+      endSectionId: open.endSectionId,
+      endMeasureId: open.endMeasureId,
+      measures: open.measures,
+    })
+    open = null
+  }
 
   for (const section of chart.sections) {
     for (const measure of section.measures) {
       const ref = { sectionId: section.id, measureId: measure.id }
+
+      // A close-repeat sitting on the LEFT barline of this measure means
+      // the previous measure was the last one inside the open region.
+      // Close before processing this measure further — the current
+      // measure is OUTSIDE the region.
+      if (open && measure.barlineStart === "repeatEnd") {
+        flushOpen()
+      }
 
       if (measure.barlineStart === "repeatStart" && !open && measure.repeatRegionId) {
         open = {
           regionId: measure.repeatRegionId,
           startSectionId: section.id,
           startMeasureId: measure.id,
+          endSectionId: section.id,
+          endMeasureId: measure.id,
           measures: [ref],
         }
       } else if (open) {
         open.measures.push(ref)
+        open.endSectionId = section.id
+        open.endMeasureId = measure.id
       }
 
       if (open && measure.barlineEnd === "repeatEnd") {
-        regions.push({
-          regionId: open.regionId,
-          startSectionId: open.startSectionId,
-          startMeasureId: open.startMeasureId,
-          endSectionId: section.id,
-          endMeasureId: measure.id,
-          measures: open.measures,
-        })
-        open = null
+        flushOpen()
       }
     }
   }
   return regions
 }
 
-/** Find the repeat region that contains the given measure (the measure may be
- *  the opening, the closing, or anything in between). */
+/** Find the repeat region that contains the given measure. The measure
+ *  may be the opening, the closing, anything in between, OR the bar
+ *  immediately after the close-repeat (where the closing ending lives —
+ *  that bar is logically attached to the region even though it sits
+ *  outside the region's `measures` list). */
 export function findRegionContaining(
   chart: ChordChart,
   sectionId: string,
@@ -78,6 +106,14 @@ export function findRegionContaining(
       r.measures.some(
         (m) => m.sectionId === sectionId && m.measureId === measureId,
       )
+    ) {
+      return r
+    }
+    const after = findMeasureAfterRegion(chart, r)
+    if (
+      after &&
+      after.sectionId === sectionId &&
+      after.measureId === measureId
     ) {
       return r
     }
@@ -246,10 +282,15 @@ export function computeRegionMap(
     for (const m of region.measures) {
       map.set(m.measureId, region)
     }
+    // Also include the bar immediately after the region — that's where
+    // the closing ending lives. Click handlers on that bar need to
+    // resolve back to the region even before any volta is placed there.
+    const after = findMeasureAfterRegion(chart, region)
+    if (after && !map.has(after.measureId)) {
+      map.set(after.measureId, region)
+    }
   }
-  // Voltas placed outside the region (typically the closing ending in
-  // the bar immediately after the close-repeat) still belong to the
-  // region — index them so click handlers can resolve back to it.
+  // Voltas placed elsewhere still resolve to their region.
   for (const section of chart.sections) {
     for (const measure of section.measures) {
       if (measure.volta && !map.has(measure.id)) {

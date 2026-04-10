@@ -84,6 +84,22 @@ export function cycleBarlineStyle(
 }
 
 /**
+ * Returns true if a `repeatEnd` at this position has no matching
+ * `repeatStart` opener earlier in the chart — i.e., it's an orphan
+ * caused by the user dropping a new close-repeat in front of an
+ * existing one. Used to surface a "this close-repeat needs an ending
+ * bracket OR a fresh start-repeat" hint.
+ */
+export function isOrphanedRepeatEnd(
+  chart: ChordChart,
+  sectionId: string,
+  measureId: string,
+  side: "start" | "end",
+): boolean {
+  return countOpenRepeatsBefore(chart, sectionId, measureId, side) === 0
+}
+
+/**
  * Returns true if the `repeatStart` at this position has no matching
  * `repeatEnd` later in the chart. Used to surface a "don't forget to close
  * this repeat" hint. Walks barlines in chart order; once it reaches the
