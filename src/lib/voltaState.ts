@@ -338,6 +338,10 @@ export interface VoltaSlice {
    *  renderer insets the left edge by a few pixels so adjacent brackets
    *  don't touch and get visually distinct. */
   abutsPrevious: boolean
+  /** True on every bar of a 2nd (or later) ending in a region. Used to
+   *  inset the right edge of secondary endings so they pull back from
+   *  the bar boundary, separating them visually from what follows. */
+  isSecondary: boolean
   /** The bar that owns the volta object (the absolute first bar of the
    *  slice). Click handlers on mid-slice bars use this to route the
    *  picker back to the bar that holds the volta. */
@@ -400,6 +404,13 @@ export function computeVoltaSlices(
   // know the two brackets abut and need a visual gap.
   const prevEndByRegion = new Map<string, number>()
 
+  // Track how many voltas we've already emitted per region so we can
+  // mark every bar of the 2nd+ ending as "secondary" — the bracket
+  // renderer uses that to inset left/right edges for visual separation
+  // from the preceding ending.
+  const voltaCountByRegion = new Map<string, number>()
+  const prevAbutsByRegion = new Map<string, number>() // just for abut detection
+
   for (let i = 0; i < flat.length; i++) {
     const owner = flat[i]!
     const measure = owner.measure
@@ -431,7 +442,9 @@ export function computeVoltaSlices(
     const lastIdx = Math.max(i, boundaryIdx)
     const lastBar = flat[lastIdx]!.measure
     const endsAtRepeat = lastBar.barlineEnd === "repeatEnd"
-    const prevEnd = prevEndByRegion.get(regionId)
+    const voltaOrdinal = (voltaCountByRegion.get(regionId) ?? 0) + 1
+    const isSecondary = voltaOrdinal >= 2
+    const prevEnd = prevAbutsByRegion.get(regionId)
     const abutsPrevious = prevEnd !== undefined && prevEnd === i - 1
 
     for (let k = i; k <= lastIdx; k++) {
@@ -443,12 +456,14 @@ export function computeVoltaSlices(
         absoluteEnd: k === lastIdx,
         endsAtRepeat,
         abutsPrevious: k === i ? abutsPrevious : false,
+        isSecondary,
         ownerSectionId: owner.sectionId,
         ownerMeasureId: measure.id,
       })
     }
 
-    prevEndByRegion.set(regionId, lastIdx)
+    voltaCountByRegion.set(regionId, voltaOrdinal)
+    prevAbutsByRegion.set(regionId, lastIdx)
   }
 
   return slices
