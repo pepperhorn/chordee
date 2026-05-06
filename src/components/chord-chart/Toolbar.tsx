@@ -50,7 +50,7 @@ import { usePlaybackStore } from "@/lib/plugins/playback/playback-store"
 import { PdfExportDialog } from "@/components/export/PdfExportDialog"
 import { PdfIcon } from "@/components/icons/PdfIcon"
 import { NewScoreDialog } from "./NewScoreDialog"
-import { LibraryDialog } from "@/components/library/LibraryDialog"
+import { Library } from "@/components/library/Library"
 import { ShareDialog } from "@/components/share/ShareDialog"
 import { AccountButton } from "@/components/auth/AccountButton"
 import { AuthModal } from "@/components/auth/AuthModal"
@@ -730,8 +730,8 @@ export function Toolbar() {
           <ToolbarButton
             icon={LibraryIcon}
             label="Library"
-            shortcut={auth.isLoggedIn ? "Open a saved chart" : "Sign in first"}
-            onClick={() => auth.isLoggedIn ? setLibraryOpen(true) : setAuthModalOpen(true)}
+            shortcut="Browse charts (yours + community + samples)"
+            onClick={() => setLibraryOpen(true)}
             className="btn-library"
           />
           <ToolbarButton
@@ -798,7 +798,7 @@ export function Toolbar() {
 
       <PdfExportDialog open={pdfDialogOpen} onOpenChange={setPdfDialogOpen} />
       <NewScoreDialog isOpen={newScoreOpen} onClose={() => setNewScoreOpen(false)} />
-      <LibraryDialog isOpen={libraryOpen} onClose={() => setLibraryOpen(false)} />
+      <Library isOpen={libraryOpen} onClose={() => setLibraryOpen(false)} />
       <ShareDialog isOpen={shareOpen} onClose={() => setShareOpen(false)} />
       <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} auth={auth} />
       {readOnly && (

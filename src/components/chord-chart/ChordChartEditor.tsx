@@ -11,9 +11,16 @@ import { playbackPlugin } from "@/lib/plugins/playback"
 import { useListenMode } from "@/lib/plugins/playback/useListenMode"
 import { AuthProvider } from "@/lib/auth/AuthContext"
 import { ShareResolver } from "@/components/share/ShareResolver"
+import { registerLibraryPlugin } from "@/lib/library/registry"
+import { userLibraryPlugin } from "@/lib/library/userLibraryPlugin"
+import { publicLibraryPlugin } from "@/lib/library/publicLibraryPlugin"
+import { factoryLibraryPlugin } from "@/lib/library/factoryLibraryPlugin"
 
 // Register plugins on module load
 registerPlugin(playbackPlugin)
+registerLibraryPlugin(userLibraryPlugin)
+registerLibraryPlugin(publicLibraryPlugin)
+registerLibraryPlugin(factoryLibraryPlugin)
 
 function PluginPanel() {
   const activePanel = useChartStore((s) => s.ui.activePluginPanel)
