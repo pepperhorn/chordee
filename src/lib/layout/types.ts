@@ -23,6 +23,11 @@ export interface LayoutConfig {
   justification: "proportional" | "equal"
   measuresPerLine: number | "auto"
   clefDisplay: "start" | "section" | "eachLine"
+  /** Display mode for chord vs Nashville. */
+  notationDisplay: "chords" | "both" | "nashville"
+  /** Chart tonic, used to derive Nashville from chord roots when no
+   *  explicit nashvilleChord exists on a slot. */
+  chartKey: string
 }
 
 export interface LayoutResult {
@@ -87,6 +92,9 @@ export interface LayoutSlot {
   width: number
   slotId: string
   chord?: { text: string; displayText: string; x: number; y: number }
+  /** Nashville number rendered above the chord symbol when display="both",
+   *  or in place of the chord when display="nashville". */
+  nashville?: { text: string; x: number; y: number; primary: boolean }
   slash?: {
     x: number
     y: number

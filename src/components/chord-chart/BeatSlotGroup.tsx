@@ -1,9 +1,11 @@
+import { memo } from "react"
 import type { LayoutBeat } from "@/lib/layout/types"
 import { Slash } from "./Slash"
 import { BeamedSlashGroup } from "./BeamedSlashGroup"
 import { ChordSymbol } from "./ChordSymbol"
 import { useChartStore } from "@/lib/store"
 import { useFontConfigField, useEffectiveScale } from "@/lib/fontConfigContext"
+import { getStaveMetrics } from "@/lib/layout/constants"
 
 const BEAMED_DIVISIONS = new Set([
   "eighth",
@@ -24,7 +26,7 @@ interface BeatSlotGroupProps {
   showLyrics: boolean
 }
 
-export function BeatSlotGroup({
+function BeatSlotGroupImpl({
   beat,
   barX,
   lineY,
@@ -48,19 +50,10 @@ export function BeatSlotGroup({
   const lyricScale = useEffectiveScale("lyricSize")
   const dynamicScale = useEffectiveScale("dynamicSize")
 
-  // Derive vertical positions from chord scale.
-  // Chord baseline sits above the stave; stave starts after chord area.
-  const chordBaseline = Math.round(-2 * chordScale)
-  const staveTop = Math.round(14 * chordScale)
-  // Vertically center slash noteheads on the barline midline.
-  // Barline geometry: y = staveTop + 6, height = 32 (see BarGroup).
-  // Barline center = staveTop + 6 + 16 = staveTop + 22.
-  // Non-beamed slash notehead has height 12, so its top must be barline_center - 6
-  //   = staveTop + 16.
-  // Beamed slashes are translated by their CENTER (nhY = -NH_HEIGHT/2 inside),
-  //   so their y is the barline center directly.
-  const slashY = staveTop + 16
-  const beamedY = staveTop + 22
+  // Vertical positions all derive from chord scale via a single helper
+  // (see lib/layout/constants.ts → getStaveMetrics) so BarGroup and
+  // BeatSlotGroup can never drift apart on stave geometry.
+  const { chordBaseline, slashY, beamedY } = getStaveMetrics(chordScale)
 
   return (
     <g
@@ -165,6 +158,23 @@ export function BeatSlotGroup({
               />
             )}
 
+            {/* Nashville number — primary (replaces chord row) or secondary (above chord). */}
+            {slot.nashville && (
+              <text
+                className={`nashville-number nashville-number--${slot.nashville.primary ? "primary" : "secondary"}`}
+                x={slot.width / 2}
+                y={slot.nashville.primary ? chordBaseline : chordBaseline + slot.nashville.y}
+                textAnchor="middle"
+                dominantBaseline="alphabetic"
+                fontFamily="Poppins, sans-serif"
+                fontWeight={slot.nashville.primary ? 600 : 500}
+                fontSize={slot.nashville.primary ? 22 * chordScale : 14}
+                fill={slot.nashville.primary ? "#000" : "rgba(100, 116, 139, 0.85)"}
+              >
+                {slot.nashville.text}
+              </text>
+            )}
+
             {/* Individual slash for quarter/half/whole (non-beamed) */}
             {showSlashes && !isBeamed && slot.slash && !slot.slash.rest && (
               <Slash
@@ -245,3 +255,5 @@ export function BeatSlotGroup({
     </g>
   )
 }
+
+export const BeatSlotGroup = memo(BeatSlotGroupImpl)

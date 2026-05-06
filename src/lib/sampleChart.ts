@@ -69,6 +69,7 @@ function measure1(chord: [string, string?]) {
 export const SAMPLE_CHART: ChordChart = {
   version: "1.0",
   meta: {
+    id: "00000000-0000-4000-8000-000000000001",
     title: "Autumn Leaves",
     subtitle: "",
     composer: "Joseph Kosma",
@@ -79,7 +80,7 @@ export const SAMPLE_CHART: ChordChart = {
     tempoDivisor: "quarter",
     tempoText: "",
     showTempo: true,
-    notationType: "standard",
+    notationDisplay: "chords",
     measuresPerLine: 4,
     clef: "treble",
     clefDisplay: "start",
@@ -93,6 +94,7 @@ export const SAMPLE_CHART: ChordChart = {
       id: generateId(),
       name: "A",
       timeSignature: { beats: 4, beatUnit: 4 },
+      showTimeSignature: "auto",
       rehearsalMark: "A",
       measures: [
         measure2(["C", "min7"], ["F", "dom7"]),
@@ -109,6 +111,7 @@ export const SAMPLE_CHART: ChordChart = {
       id: generateId(),
       name: "B",
       timeSignature: { beats: 4, beatUnit: 4 },
+      showTimeSignature: "auto",
       rehearsalMark: "B",
       measures: [
         measure2(["A", "hdim7"], ["D", "dom7"]),

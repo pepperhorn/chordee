@@ -52,6 +52,13 @@ export const BeatSchema = z.object({
   slots: z.array(BeatSlotSchema),
 })
 
+// ── Time Signature ─────────────────────────────────────────────────────
+
+export const TimeSignatureSchema = z.object({
+  beats: z.number().min(1).max(16),
+  beatUnit: z.union([z.literal(2), z.literal(4), z.literal(8), z.literal(16)]),
+})
+
 // ── Measure ────────────────────────────────────────────────────────────
 
 export const BarlineSchema = z.enum([
@@ -77,6 +84,10 @@ export const VoltaSchema = z.object({
 export const MeasureSchema = z.object({
   id: z.string(),
   instruction: z.string().optional(),
+  /** Optional in-section time-signature change. When set, the meter
+   *  changes at this measure and propagates forward until the next
+   *  override or the end of the section. */
+  timeSignature: TimeSignatureSchema.optional(),
   barlineStart: BarlineSchema.default("single"),
   barlineEnd: BarlineSchema.default("single"),
   repeatStart: z.boolean().default(false),
@@ -95,28 +106,31 @@ export const MeasureSchema = z.object({
 
 // ── Section ────────────────────────────────────────────────────────────
 
-export const TimeSignatureSchema = z.object({
-  beats: z.number().min(1).max(16),
-  beatUnit: z.union([z.literal(2), z.literal(4), z.literal(8), z.literal(16)]),
-})
+export const NavigationTypeSchema = z.enum([
+  "segno",
+  "coda",
+  "dsSegno",
+  "dsCoda",
+  "dcCoda",
+  "dcFine",
+  "fine",
+  "toCoda",
+])
 
 export const NavigationSchema = z.object({
-  type: z.enum([
-    "segno",
-    "coda",
-    "dsSegno",
-    "dsCoda",
-    "dcCoda",
-    "dcFine",
-    "fine",
-    "toCoda",
-  ]),
+  type: NavigationTypeSchema,
 })
+
+export const ShowTimeSignatureSchema = z.enum(["auto", "always", "never"])
 
 export const SectionSchema = z.object({
   id: z.string(),
   name: z.string(),
   timeSignature: TimeSignatureSchema.default({ beats: 4, beatUnit: 4 }),
+  /** How the time signature renders at the section's first bar.
+   *  "auto" (default) — show only on transition from prior section's meter.
+   *  "always" — always show. "never" — never show. */
+  showTimeSignature: ShowTimeSignatureSchema.default("auto"),
   rehearsalMark: z.string().optional(),
   navigation: NavigationSchema.optional(),
   measures: z.array(MeasureSchema),
@@ -133,26 +147,45 @@ export const ClefSchema = z.enum([
   "percussion",
 ])
 
-export const ChartMetaSchema = z.object({
-  title: z.string().default("Untitled"),
-  subtitle: z.string().default(""),
-  composer: z.string().default(""),
-  arranger: z.string().default(""),
-  style: z.string().default(""),
-  key: z.string().default("C"),
-  tempo: z.number().default(120),
-  tempoDivisor: z.enum(["whole", "half", "quarter", "eighth", "sixteenth"]).default("quarter"),
-  tempoText: z.string().default(""),
-  showTempo: z.boolean().default(true),
-  notationType: z.enum(["standard", "nashville"]).default("standard"),
-  measuresPerLine: z.number().default(4),
-  clef: ClefSchema.default("treble"),
-  clefDisplay: z.enum(["start", "section", "eachLine"]).default("start"),
-  showClef: z.boolean().default(false),
-  showKeySignature: z.boolean().default(true),
-  copyright: z.string().default(""),
-  footerText: z.string().default(""),
-})
+export const NotationDisplaySchema = z.enum(["chords", "both", "nashville"])
+
+export const ChartMetaSchema = z.preprocess(
+  (raw) => {
+    // Migrate legacy `notationType` → `notationDisplay`
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      const m = raw as Record<string, unknown>
+      if (m.notationDisplay === undefined && typeof m.notationType === "string") {
+        const next = { ...m }
+        next.notationDisplay = m.notationType === "nashville" ? "nashville" : "chords"
+        delete next.notationType
+        return next
+      }
+    }
+    return raw
+  },
+  z.object({
+    /** Stable client-side id, used as `external_id` for cloud saves. */
+    id: z.string().uuid().default(() => crypto.randomUUID()),
+    title: z.string().default("Untitled"),
+    subtitle: z.string().default(""),
+    composer: z.string().default(""),
+    arranger: z.string().default(""),
+    style: z.string().default(""),
+    key: z.string().default("C"),
+    tempo: z.number().default(120),
+    tempoDivisor: z.enum(["whole", "half", "quarter", "eighth", "sixteenth"]).default("quarter"),
+    tempoText: z.string().default(""),
+    showTempo: z.boolean().default(true),
+    notationDisplay: NotationDisplaySchema.default("chords"),
+    measuresPerLine: z.number().default(4),
+    clef: ClefSchema.default("treble"),
+    clefDisplay: z.enum(["start", "section", "eachLine"]).default("start"),
+    showClef: z.boolean().default(false),
+    showKeySignature: z.boolean().default(true),
+    copyright: z.string().default(""),
+    footerText: z.string().default(""),
+  })
+)
 
 export const ChordChartSchema = z.object({
   version: z.literal("1.0"),
@@ -173,6 +206,7 @@ export type Volta = z.infer<typeof VoltaSchema>
 export type Measure = z.infer<typeof MeasureSchema>
 export type TimeSignature = z.infer<typeof TimeSignatureSchema>
 export type Navigation = z.infer<typeof NavigationSchema>
+export type NavigationType = z.infer<typeof NavigationTypeSchema>
 export type Section = z.infer<typeof SectionSchema>
 export type Clef = z.infer<typeof ClefSchema>
 export type ChartMeta = z.infer<typeof ChartMetaSchema>

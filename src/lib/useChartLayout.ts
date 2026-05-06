@@ -104,6 +104,8 @@ export function useChartLayout(
       justification,
       measuresPerLine,
       clefDisplay,
+      notationDisplay: chart.meta.notationDisplay,
+      chartKey,
     }
 
     return computeLayout(chart, config)

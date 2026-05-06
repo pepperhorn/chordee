@@ -15,7 +15,7 @@ export function ChordInput({ layout }: ChordInputProps) {
   const selection = useChartStore((s) => s.ui.selection)
   const setSlotChord = useChartStore((s) => s.setSlotChord)
   const setSlotNashville = useChartStore((s) => s.setSlotNashville)
-  const notationType = useChartStore((s) => s.chart.meta.notationType)
+  const notationDisplay = useChartStore((s) => s.chart.meta.notationDisplay)
   const editMode = useChartStore((s) => s.ui.editMode)
   const setSelection = useChartStore((s) => s.setSelection)
   const chordFont = useChartStore((s) => s.ui.fontConfig.chord)
@@ -28,7 +28,7 @@ export function ChordInput({ layout }: ChordInputProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
 
-  const isNashville = notationType === "nashville"
+  const isNashville = notationDisplay === "nashville"
 
   // Find the selected slot's position entry
   const selectedEntry = selection?.slotId

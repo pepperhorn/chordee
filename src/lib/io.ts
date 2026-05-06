@@ -229,7 +229,7 @@ export function exportToMarkdown(chart: ChordChart): string {
   if (chart.meta.arranger) lines.push(`arranger: "${chart.meta.arranger}"`)
   lines.push(`key: ${chart.meta.key}`)
   lines.push(`tempo: ${chart.meta.tempo}`)
-  lines.push(`notationType: ${chart.meta.notationType}`)
+  lines.push(`notationDisplay: ${chart.meta.notationDisplay}`)
   lines.push("---")
   lines.push("")
 

@@ -78,6 +78,7 @@ export function createSection(name: string = "Intro"): Section {
     id: generateId(),
     name,
     timeSignature: { beats: 4, beatUnit: 4 },
+    showTimeSignature: "auto",
     measures: Array.from({ length: 4 }, () => createMeasure()),
   }
 }
@@ -86,6 +87,7 @@ export function createEmptyChart(): ChordChart {
   return {
     version: "1.0",
     meta: {
+      id: crypto.randomUUID(),
       title: "Untitled",
       subtitle: "",
       composer: "",
@@ -96,7 +98,7 @@ export function createEmptyChart(): ChordChart {
       tempoDivisor: "quarter",
       tempoText: "",
       showTempo: true,
-      notationType: "standard",
+      notationDisplay: "chords",
       measuresPerLine: 4,
       clef: "treble",
       clefDisplay: "start",

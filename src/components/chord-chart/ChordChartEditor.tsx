@@ -9,6 +9,7 @@ import { useState, useEffect, useRef } from "react"
 import { registerPlugin, getPlugin } from "@/lib/plugins/registry"
 import { playbackPlugin } from "@/lib/plugins/playback"
 import { useListenMode } from "@/lib/plugins/playback/useListenMode"
+import { AuthProvider } from "@/lib/auth/AuthContext"
 
 // Register plugins on module load
 registerPlugin(playbackPlugin)
@@ -46,7 +47,7 @@ function PluginPanel() {
 
 export function ChordChartEditor() {
   const theme = useChartStore((s) => s.ui.theme)
-  const notationType = useChartStore((s) => s.chart.meta.notationType)
+  const notationDisplay = useChartStore((s) => s.chart.meta.notationDisplay)
 
   // Activate listen mode hook
   useListenMode()
@@ -68,23 +69,25 @@ export function ChordChartEditor() {
   const layout = useChartLayout(editorWidth > 0 ? editorWidth : 0)
 
   return (
-    <div
-      ref={editorRef}
-      data-theme={theme}
-      data-notation={notationType}
-      className={`chord-chart-editor chord-chart-editor--${theme} flex h-screen flex-col bg-background text-foreground`}
-    >
-      <a href="#chart-area" className="chord-chart-skip-link">
-        Skip to chart
-      </a>
-      <Toolbar />
-      <div className="editor-main relative flex flex-1 overflow-hidden">
-        <PluginPanel />
-        <ChartContainer />
-        <PropertiesPanel />
+    <AuthProvider>
+      <div
+        ref={editorRef}
+        data-theme={theme}
+        data-notation={notationDisplay}
+        className={`chord-chart-editor chord-chart-editor--${theme} flex h-screen flex-col bg-background text-foreground`}
+      >
+        <a href="#chart-area" className="chord-chart-skip-link">
+          Skip to chart
+        </a>
+        <Toolbar />
+        <div className="editor-main relative flex flex-1 overflow-hidden">
+          <PluginPanel />
+          <ChartContainer />
+          <PropertiesPanel />
+        </div>
+        <MobileBar layout={layout} />
+        <Toast />
       </div>
-      <MobileBar layout={layout} />
-      <Toast />
-    </div>
+    </AuthProvider>
   )
 }

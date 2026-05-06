@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import {
   Undo2,
   Redo2,
@@ -25,6 +25,9 @@ import {
   VolumeX,
   ChevronDown,
   FileDown,
+  FilePlus,
+  Save,
+  Cloud,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -42,6 +45,22 @@ import { parseChord } from "@/lib/chordParser"
 import { formatChord } from "@/lib/utils"
 import { usePlaybackStore } from "@/lib/plugins/playback/playback-store"
 import { PdfExportDialog } from "@/components/export/PdfExportDialog"
+import { NewScoreDialog } from "./NewScoreDialog"
+import { CloudOpenDialog } from "./CloudOpenDialog"
+import { AccountButton } from "@/components/auth/AccountButton"
+import { AuthModal } from "@/components/auth/AuthModal"
+import { useAuthContext } from "@/lib/auth/AuthContext"
+import { saveChart } from "@/lib/cloudSave"
+
+type NotationDisplay = "chords" | "both" | "nashville"
+
+function cycleNotationDisplay(d: NotationDisplay): NotationDisplay {
+  return d === "chords" ? "both" : d === "both" ? "nashville" : "chords"
+}
+
+function notationDisplayLabel(d: NotationDisplay): string {
+  return d === "chords" ? "Chords" : d === "both" ? "Chords + Nashville" : "Nashville"
+}
 
 function ToolbarButton({
   icon: Icon,
@@ -223,7 +242,8 @@ export function Toolbar() {
 
   const handleChordSubmit = useCallback(() => {
     if (!selection?.slotId || !selection.sectionId || !selection.measureId || !selection.beatId) return
-    const isNashville = chart.meta.notationType === "nashville"
+    // Nashville-only display means the user is typing scale degrees (e.g. "4m7").
+    const isNashville = chart.meta.notationDisplay === "nashville"
 
     if (!chordValue.trim()) {
       setSlotChord(selection.sectionId, selection.measureId, selection.beatId, selection.slotId, null)
@@ -238,7 +258,7 @@ export function Toolbar() {
     } else if (result.chord) {
       setSlotChord(selection.sectionId, selection.measureId, selection.beatId, selection.slotId, result.chord)
     }
-  }, [selection, chordValue, chart.meta.notationType, setSlotChord, setSlotNashville])
+  }, [selection, chordValue, chart.meta.notationDisplay, setSlotChord, setSlotNashville])
 
   const handleExportJSON = () => {
     const json = exportJSON()
@@ -271,6 +291,47 @@ export function Toolbar() {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false)
+  const [newScoreOpen, setNewScoreOpen] = useState(false)
+  const [cloudOpenOpen, setCloudOpenOpen] = useState(false)
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [savingCloud, setSavingCloud] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const auth = useAuthContext()
+
+  const handleCloudSave = useCallback(async () => {
+    if (!auth.isLoggedIn || !auth.user || !auth.token) {
+      setAuthModalOpen(true)
+      return
+    }
+    setSavingCloud(true)
+    setSaveError(null)
+    try {
+      await saveChart(chart, auth.user.id, auth.token)
+    } catch (e) {
+      setSaveError((e as Error).message)
+    } finally {
+      setSavingCloud(false)
+    }
+  }, [auth, chart])
+
+  // Keyboard shortcuts: Cmd/Ctrl+N (new score), Cmd/Ctrl+S (save)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey
+      if (!mod) return
+      const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase()
+      if (tag === "input" || tag === "textarea") return
+      if (e.key === "n" || e.key === "N") {
+        e.preventDefault()
+        setNewScoreOpen(true)
+      } else if (e.key === "s" || e.key === "S") {
+        e.preventDefault()
+        handleCloudSave()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [handleCloudSave])
   const isMac = typeof navigator !== "undefined" && navigator.platform?.includes("Mac")
   const mod = isMac ? "⌘" : "Ctrl+"
 
@@ -303,10 +364,10 @@ export function Toolbar() {
           <ToolbarButton icon={Plus} label="Add Section" onClick={() => addSection()} className="btn-add-section" />
           <ToolbarButton
             icon={Hash}
-            label={`Notation: ${chart.meta.notationType === "nashville" ? "Nashville" : "Standard"}`}
-            onClick={() => updateMeta({ notationType: chart.meta.notationType === "standard" ? "nashville" : "standard" })}
-            active={chart.meta.notationType === "nashville"}
-            className="btn-notation-type"
+            label={`Notation: ${notationDisplayLabel(chart.meta.notationDisplay)}`}
+            onClick={() => updateMeta({ notationDisplay: cycleNotationDisplay(chart.meta.notationDisplay) })}
+            active={chart.meta.notationDisplay !== "chords"}
+            className="btn-notation-display"
           />
           <ToolbarButton icon={Music} label="Slashes" onClick={toggleShowSlashes} active={ui.showSlashes} className="btn-toggle-slashes" />
           <ToolbarButton icon={Type} label="Dynamics" onClick={toggleShowDynamics} active={ui.showDynamics} className="btn-toggle-dynamics" />
@@ -405,15 +466,15 @@ export function Toolbar() {
         <div className="toolbar-group-notation flex items-center gap-0.5">
           <ToolbarButton
             icon={Hash}
-            label={`Notation: ${chart.meta.notationType === "nashville" ? "Nashville" : "Standard"}`}
-            shortcut="Toggle between standard and Nashville notation"
+            label={`Notation: ${notationDisplayLabel(chart.meta.notationDisplay)}`}
+            shortcut="Cycle: Chords → Chords + Nashville → Nashville"
             onClick={() =>
               updateMeta({
-                notationType: chart.meta.notationType === "standard" ? "nashville" : "standard",
+                notationDisplay: cycleNotationDisplay(chart.meta.notationDisplay),
               })
             }
-            active={chart.meta.notationType === "nashville"}
-            className="btn-notation-type"
+            active={chart.meta.notationDisplay !== "chords"}
+            className="btn-notation-display"
           />
 
           {/* Inline chord input when slot selected in chord mode */}
@@ -450,7 +511,7 @@ export function Toolbar() {
                     if (chordValue) handleChordSubmit()
                     setChordValue("")
                   }}
-                  placeholder={chart.meta.notationType === "nashville" ? "4m7" : "Am7"}
+                  placeholder={chart.meta.notationDisplay === "nashville" ? "4m7" : "Am7"}
                   aria-label="Chord input"
                 />
               </TooltipTrigger>
@@ -613,6 +674,29 @@ export function Toolbar() {
         {/* I/O group */}
         <div className="toolbar-group-io flex items-center gap-0.5">
           <ToolbarButton
+            icon={FilePlus}
+            label="New chart"
+            shortcut={`${mod}N — start a fresh chart`}
+            onClick={() => setNewScoreOpen(true)}
+            className="btn-new-score font-bold"
+          />
+          <ToolbarButton
+            icon={savingCloud ? Cloud : Save}
+            label={savingCloud ? "Saving…" : "Save to account"}
+            shortcut={`${mod}S — cloud save${auth.isLoggedIn ? "" : " (sign in first)"}`}
+            onClick={handleCloudSave}
+            disabled={savingCloud}
+            className="btn-cloud-save"
+          />
+          <ToolbarButton
+            icon={Cloud}
+            label="Open from account"
+            shortcut={auth.isLoggedIn ? "Open a saved chart" : "Sign in first"}
+            onClick={() => auth.isLoggedIn ? setCloudOpenOpen(true) : setAuthModalOpen(true)}
+            className="btn-cloud-open"
+          />
+          <Separator orientation="vertical" className="toolbar-sep mx-1 h-5 bg-white/20" />
+          <ToolbarButton
             icon={Upload}
             label="Import"
             shortcut="Load a .json chart file"
@@ -646,9 +730,24 @@ export function Toolbar() {
 
         {/* Playback / Listen */}
         <PlaybackToolbarGroup />
+
+        <Separator orientation="vertical" className="toolbar-sep mx-1 h-5 bg-white/20" />
+
+        {/* Account */}
+        <div className="toolbar-group-account flex items-center">
+          <AccountButton />
+        </div>
       </div>
 
       <PdfExportDialog open={pdfDialogOpen} onOpenChange={setPdfDialogOpen} />
+      <NewScoreDialog isOpen={newScoreOpen} onClose={() => setNewScoreOpen(false)} />
+      <CloudOpenDialog isOpen={cloudOpenOpen} onClose={() => setCloudOpenOpen(false)} />
+      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} auth={auth} />
+      {saveError && (
+        <div className="toolbar-save-error fixed bottom-4 right-4 z-50 rounded-md bg-red-600 px-3 py-2 text-sm text-white shadow-lg">
+          Save failed: {saveError}
+        </div>
+      )}
       </>
     </TooltipProvider>
   )

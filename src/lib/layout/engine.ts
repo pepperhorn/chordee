@@ -1,11 +1,12 @@
 import type { ChordChart, Section, Measure, Beat, BeatSlot } from "../schema"
 import { formatChord } from "../utils"
+import { chordToNashville, formatNashville } from "../nashville"
 import { measurementCache } from "./cache"
 import { justifyLine } from "./justify"
 import {
   DIVISION_MULTIPLIERS,
   MIN_BEAT_WIDTH,
-  BARLINE_WIDTHS,
+  getMeasureBarlineWidths,
   DEFAULT_SPACING,
 } from "./constants"
 import type {
@@ -22,29 +23,35 @@ import type {
 
 // ── Step 1: Collect unique strings ─────────────────────────────────────
 
-function collectUniqueStrings(chart: ChordChart): {
+function collectUniqueStrings(chart: ChordChart, key: string): {
   chords: Set<string>
   lyrics: Set<string>
+  nashvilles: Set<string>
 } {
   const chords = new Set<string>()
   const lyrics = new Set<string>()
+  const nashvilles = new Set<string>()
 
   for (const section of chart.sections) {
     for (const measure of section.measures) {
       for (const beat of measure.beats) {
         if (beat.lyrics) lyrics.add(beat.lyrics)
         for (const slot of beat.slots) {
-          if (slot.chord) chords.add(formatChord(slot.chord))
+          if (slot.chord) {
+            chords.add(formatChord(slot.chord))
+            // Pre-measure derived Nashville text, in case display switches.
+            const derived = chordToNashville(slot.chord, key)
+            nashvilles.add(formatNashville(derived))
+          }
           if (slot.nashvilleChord) {
-            const text = slot.nashvilleChord.degree + (slot.nashvilleChord.quality || "")
-            chords.add(text)
+            nashvilles.add(formatNashville(slot.nashvilleChord))
           }
         }
       }
     }
   }
 
-  return { chords, lyrics }
+  return { chords, lyrics, nashvilles }
 }
 
 // ── Step 2: Measure all strings ────────────────────────────────────────
@@ -72,13 +79,22 @@ function computeBeatWidth(
   const multiplier = DIVISION_MULTIPLIERS[beat.division] ?? 1.0
   const minWidth = MIN_BEAT_WIDTH * multiplier
 
-  // Sum the width needed for all slots — each slot needs space for its chord
-  // When multiple slots have chords, they sit side by side
+  // Sum the width needed for all slots — each slot needs space for whatever
+  // text is rendered in the chord row. In "nashville" mode the chord row is
+  // replaced by the Nashville number; in other modes it's the chord symbol.
   let totalChordWidth = 0
   for (const slot of beat.slots) {
     let text = ""
-    if (slot.chord) text = formatChord(slot.chord)
-    else if (slot.nashvilleChord) text = slot.nashvilleChord.degree + (slot.nashvilleChord.quality || "")
+    if (config.notationDisplay === "nashville") {
+      if (slot.nashvilleChord) {
+        text = formatNashville(slot.nashvilleChord)
+      } else if (slot.chord) {
+        text = formatNashville(chordToNashville(slot.chord, config.chartKey))
+      }
+    } else {
+      if (slot.chord) text = formatChord(slot.chord)
+      else if (slot.nashvilleChord) text = formatNashville(slot.nashvilleChord)
+    }
     const w = chordWidths.get(text) ?? 0
     // Each slot needs at least its chord width + padding between slots
     totalChordWidth += Math.max(w + beatPaddingX, minWidth / beat.slots.length)
@@ -122,8 +138,7 @@ function computeBarWidths(
         computeBeatWidth(beat, chordWidths, lyricWidths, config)
       )
       const totalBeatWidth = beatWidths.reduce((sum, w) => sum + w, 0)
-      const startBarlineW = BARLINE_WIDTHS[measure.barlineStart] ?? 1
-      const endBarlineW = BARLINE_WIDTHS[measure.barlineEnd] ?? 1
+      const { start: startBarlineW, end: endBarlineW } = getMeasureBarlineWidths(measure)
       const naturalWidth = totalBeatWidth + startBarlineW + endBarlineW + barPaddingX * 2
 
       bars.push({
@@ -236,7 +251,14 @@ function breakIntoLines(
 function getSlotChordText(slot: BeatSlot): string {
   if (slot.noChord) return "N.C."
   if (slot.chord) return formatChord(slot.chord)
-  if (slot.nashvilleChord) return slot.nashvilleChord.degree + (slot.nashvilleChord.quality || "")
+  if (slot.nashvilleChord) return formatNashville(slot.nashvilleChord)
+  return ""
+}
+
+function getSlotNashvilleText(slot: BeatSlot, key: string): string {
+  if (slot.noChord) return ""
+  if (slot.nashvilleChord) return formatNashville(slot.nashvilleChord)
+  if (slot.chord) return formatNashville(chordToNashville(slot.chord, key))
   return ""
 }
 
@@ -252,6 +274,8 @@ function buildLayoutResult(
 
   let lastSectionId = ""
   let lastTimeSig = "" // track "beats/beatUnit" to detect changes
+  let lastSectionIdForTs = "" // tracks section across bars to detect a section's first bar
+  let currentSectionMeter: { beats: number; beatUnit: number } | null = null // effective meter inside current section, carried forward across bars
   let isFirstLine = true
 
   for (const barLine of barLines) {
@@ -302,7 +326,31 @@ function buildLayoutResult(
       config.justification
     )
 
-    const lineHeight_ = staveHeight + lineHeight + lyricLineHeight + 8
+    // Determine whether this line has any chord-bearing slot (for Nashville above row)
+    let lineHasChords = false
+    for (const bar of barLine) {
+      for (const beat of bar.measure.beats) {
+        for (const slot of beat.slots) {
+          if (slot.chord || slot.nashvilleChord || slot.noChord) {
+            lineHasChords = true
+            break
+          }
+        }
+        if (lineHasChords) break
+      }
+      if (lineHasChords) break
+    }
+
+    const display = config.notationDisplay
+    const nashvilleRowHeight = 14
+    const nashvilleAbove = display === "both" && lineHasChords
+    if (nashvilleAbove) {
+      // Push the line down to leave room for a Nashville row above the chord
+      y += nashvilleRowHeight
+    }
+
+    const lineHeight_ = staveHeight + lineHeight + lyricLineHeight + 8 +
+      (nashvilleAbove ? nashvilleRowHeight : 0)
     const elements: LayoutBar[] = []
 
     let isFirstBarInLine = true
@@ -313,8 +361,8 @@ function buildLayoutResult(
       // Distribute beat widths proportionally within justified bar width
       const totalNaturalBeat = bar.beatWidths.reduce((s, w) => s + w, 0)
       const innerWidth = jBar.width - barPaddingX * 2
-      const startBarlineW = BARLINE_WIDTHS[bar.measure.barlineStart] ?? 1
-      const beatAreaWidth = innerWidth - startBarlineW - (BARLINE_WIDTHS[bar.measure.barlineEnd] ?? 1)
+      const { start: startBarlineW, end: endBarlineW } = getMeasureBarlineWidths(bar.measure)
+      const beatAreaWidth = innerWidth - startBarlineW - endBarlineW
 
       let beatX = barPaddingX + startBarlineW
       const layoutBeats: LayoutBeat[] = []
@@ -331,6 +379,9 @@ function buildLayoutResult(
         const layoutSlots: LayoutSlot[] = beat.slots.map((slot, si) => {
           const slotX = si * slotWidth
           const chordText = getSlotChordText(slot)
+          const nashvilleText = display !== "chords"
+            ? getSlotNashvilleText(slot, config.chartKey)
+            : ""
 
           const entry: PositionEntry = {
             rect: {
@@ -348,18 +399,44 @@ function buildLayoutResult(
           }
           positionEntries.push(entry)
 
+          let chordOut: LayoutSlot["chord"]
+          let nashvilleOut: LayoutSlot["nashville"]
+
+          if (display === "nashville") {
+            // Nashville replaces the chord row
+            if (nashvilleText || slot.noChord) {
+              nashvilleOut = {
+                text: nashvilleText || (slot.noChord ? "N.C." : ""),
+                x: slotX + 4,
+                y: 0,
+                primary: true,
+              }
+            }
+          } else {
+            if (chordText) {
+              chordOut = {
+                text: chordText,
+                displayText: chordText,
+                x: slotX + 4,
+                y: 0,
+              }
+            }
+            if (display === "both" && nashvilleText) {
+              nashvilleOut = {
+                text: nashvilleText,
+                x: slotX + 4,
+                y: -nashvilleRowHeight,
+                primary: false,
+              }
+            }
+          }
+
           return {
             x: slotX,
             width: slotWidth,
             slotId: slot.id,
-            chord: chordText
-              ? {
-                  text: chordText,
-                  displayText: chordText,
-                  x: slotX + 4,
-                  y: 0,
-                }
-              : undefined,
+            chord: chordOut,
+            nashville: nashvilleOut,
             slash: {
               x: slotX + slotWidth / 2 - 4,
               y: lineHeight + 4,
@@ -403,10 +480,33 @@ function buildLayoutResult(
         endBarline: bar.measure.barlineEnd,
         wholeRest: bar.measure.wholeRest,
         timeSignature: (() => {
-          const ts = `${bar.section.timeSignature.beats}/${bar.section.timeSignature.beatUnit}`
+          // Effective meter at this bar = section's starting meter unless
+          // this bar (or a prior bar in the section) carries a measure-
+          // level override. The override propagates forward inside the
+          // section; new sections reset to their own section.timeSignature.
+          const isSectionFirstBar = bar.sectionId !== lastSectionIdForTs
+          lastSectionIdForTs = bar.sectionId
+          if (isSectionFirstBar) {
+            currentSectionMeter = bar.section.timeSignature
+          }
+          if (bar.measure.timeSignature) {
+            currentSectionMeter = bar.measure.timeSignature
+          }
+          const effective = currentSectionMeter ?? bar.section.timeSignature
+          const ts = `${effective.beats}/${effective.beatUnit}`
+          const show = bar.section.showTimeSignature ?? "auto"
+          // Display override applies only at a section's first bar.
+          if (isSectionFirstBar && show === "always") {
+            lastTimeSig = ts
+            return effective
+          }
+          if (isSectionFirstBar && show === "never") {
+            lastTimeSig = ts
+            return undefined
+          }
           if (lastTimeSig === "" || ts !== lastTimeSig) {
             lastTimeSig = ts
-            return bar.section.timeSignature
+            return effective
           }
           return undefined
         })(),
@@ -440,11 +540,22 @@ export function computeLayout(
   config: LayoutConfig
 ): LayoutResult {
   // Step 1: Collect unique strings
-  const { chords, lyrics } = collectUniqueStrings(chart)
+  const { chords, lyrics, nashvilles } = collectUniqueStrings(chart, config.chartKey)
 
-  // Step 2: Measure all strings
+  // Step 2: Measure all strings (Nashville sits in the chord row when display is
+  // "nashville"; in "both" it sits above at smaller size — we still pre-measure
+  // so width budgeting accounts for it.)
   const chordWidths = measureStrings(chords, config.fonts.chord)
   const lyricWidths = measureStrings(lyrics, config.fonts.lyric)
+  if (config.notationDisplay === "nashville") {
+    // When Nashville replaces the chord row, treat Nashville texts as the
+    // chords for width budgeting.
+    for (const n of nashvilles) {
+      if (!chordWidths.has(n)) {
+        chordWidths.set(n, measurementCache.measureText(n, config.fonts.chord))
+      }
+    }
+  }
 
   // Step 3-4: Compute bar widths
   const bars = computeBarWidths(chart, chordWidths, lyricWidths, config)
