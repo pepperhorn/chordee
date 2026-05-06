@@ -83,6 +83,7 @@ interface PreviewPageProps {
   marginPt: number
   contentWidthPt: number
   subsequentHeaderPt: number
+  footerPt: number
   previewScale: number
   title: string
   copyright: string
@@ -99,6 +100,7 @@ function PreviewPage({
   marginPt,
   contentWidthPt,
   subsequentHeaderPt,
+  footerPt,
   previewScale,
   title,
   copyright,
@@ -118,6 +120,10 @@ function PreviewPage({
   const pageContentTopY = isFirstPage ? 0 : bodyTopY - subsequentHeaderPt
 
   const contentHeightPt = paperHPt - 2 * marginPt
+  // Pixels reserved for the chart-line content (i.e., margin-to-footer-top).
+  // This MUST match the height the paginator uses, otherwise the preview
+  // shows lines that won't actually fit on the page.
+  const chartZoneHeightPt = contentHeightPt - footerPt
 
   const pageW = paperWPt * previewScale
   const pageH = paperHPt * previewScale
@@ -127,18 +133,20 @@ function PreviewPage({
       className="preview-page relative bg-white shadow-md"
       style={{ width: pageW, height: pageH, flexShrink: 0 }}
     >
-      {/* Content window (margin-boxed) */}
+      {/* Chart zone — clips chart-line content to the actual paginated area
+          (margin top → footer top). Footer overlays render below in their
+          own zone so chart content never visually spills into them. */}
       <div
-        className="preview-page-content absolute overflow-hidden"
+        className="preview-chart-zone absolute overflow-hidden"
         style={{
           left: marginPt * previewScale,
           top: marginPt * previewScale,
           width: contentWidthPt * previewScale,
-          height: contentHeightPt * previewScale,
+          height: chartZoneHeightPt * previewScale,
         }}
       >
         {/* Cropped ChartSVG — render another instance scaled, translated
-            so the right vertical slice lines up within the content box. */}
+            so the right vertical slice lines up within the chart zone. */}
         <div
           className="preview-page-scaler"
           style={{
@@ -189,15 +197,26 @@ function PreviewPage({
             </div>
           </>
         )}
+      </div>
 
-        {/* Footer overlay: copyright + "Created at chordee.app" */}
+      {/* Footer zone — sits below the chart zone, above the bottom margin.
+          Lives outside the chart zone so chart content can't overlap it. */}
+      <div
+        className="preview-footer-zone absolute"
+        style={{
+          left: marginPt * previewScale,
+          top: (marginPt + chartZoneHeightPt) * previewScale,
+          width: contentWidthPt * previewScale,
+          height: footerPt * previewScale,
+        }}
+      >
         {copyright.trim() && (
           <div
             className="preview-footer-copyright absolute text-muted-foreground text-center"
             style={{
               left: 0,
               right: 0,
-              bottom: 22 * previewScale,
+              top: (footerPt - 22) * previewScale,
               fontSize: Math.max(7, 9 * previewScale),
               fontFamily: "Inter, system-ui, sans-serif",
               opacity: 0.6,
@@ -227,7 +246,7 @@ function PreviewPage({
         </div>
       </div>
 
-      {/* Margin outline */}
+      {/* Margin outline (full margin-to-margin frame) */}
       <div
         className="preview-margin-outline pointer-events-none absolute border border-dashed border-neutral-300"
         style={{
@@ -607,6 +626,7 @@ export function PdfExportDialog({ open, onOpenChange }: PdfExportDialogProps) {
                       marginPt={marginPt}
                       contentWidthPt={contentWidthPt}
                       subsequentHeaderPt={geometry.subsequentHeaderPt}
+                      footerPt={geometry.footerPt}
                       previewScale={previewScale}
                       title={meta.title || "Chord Chart"}
                       copyright={copyright}

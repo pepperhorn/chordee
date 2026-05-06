@@ -45,6 +45,7 @@ import { parseChord } from "@/lib/chordParser"
 import { formatChord } from "@/lib/utils"
 import { usePlaybackStore } from "@/lib/plugins/playback/playback-store"
 import { PdfExportDialog } from "@/components/export/PdfExportDialog"
+import { PdfIcon } from "@/components/icons/PdfIcon"
 import { NewScoreDialog } from "./NewScoreDialog"
 import { CloudOpenDialog } from "./CloudOpenDialog"
 import { AccountButton } from "@/components/auth/AccountButton"
@@ -377,7 +378,7 @@ export function Toolbar() {
           <ToolbarButton icon={Upload} label="Import" onClick={handleImport} className="btn-import" />
           <ToolbarButton icon={Download} label="Export JSON" onClick={handleExportJSON} className="btn-export-json" />
           <ToolbarButton icon={FileText} label="Export MD" onClick={handleExportMarkdown} className="btn-export-markdown" />
-          <ToolbarButton icon={FileDown} label="Export PDF" onClick={() => { setPdfDialogOpen(true); setMobileMenuOpen(false) }} className="btn-export-pdf" />
+          <ToolbarButton icon={PdfIcon} label="Export PDF" onClick={() => { setPdfDialogOpen(true); setMobileMenuOpen(false) }} className="btn-export-pdf" />
           {/* Bars per line */}
           <div className="mobile-bpl flex items-center gap-1 w-full pt-1 border-t mt-1">
             <span className="text-[10px] text-muted-foreground shrink-0">Bars/Line:</span>
@@ -718,7 +719,7 @@ export function Toolbar() {
             className="btn-export-markdown"
           />
           <ToolbarButton
-            icon={FileDown}
+            icon={PdfIcon}
             label="Export PDF"
             shortcut="Open PDF export dialog"
             onClick={() => setPdfDialogOpen(true)}
