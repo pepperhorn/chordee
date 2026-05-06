@@ -11,6 +11,8 @@ export interface ChartSaveSummary {
   name: string
   date_created: string
   date_updated: string
+  visibility?: "private" | "link_view" | "link_edit" | "public"
+  forked_from?: string | null
 }
 
 interface DirectusItem {
@@ -44,7 +46,7 @@ async function findExisting(externalId: string, userId: string, token: string): 
     "filter[kind][_eq]": KIND,
     "filter[external_id][_eq]": externalId,
     limit: "1",
-    fields: "id,external_id,name,date_created,date_updated",
+    fields: "id,external_id,name,date_created,date_updated,visibility,forked_from",
   })
   const res = await fetch(`${ITEMS_BASE}?${params}`, { headers: authHeaders(token) })
   if (!res.ok) throw new Error(`List failed: ${res.status}`)
@@ -92,7 +94,7 @@ export async function listCharts(userId: string, token: string): Promise<ChartSa
     "filter[kind][_eq]": KIND,
     "filter[status][_eq]": "published",
     sort: "-date_updated",
-    fields: "id,external_id,name,date_created,date_updated",
+    fields: "id,external_id,name,date_created,date_updated,visibility,forked_from",
     limit: "100",
   })
   const res = await fetch(`${ITEMS_BASE}?${params}`, { headers: authHeaders(token) })

@@ -22,6 +22,13 @@ export interface PdfExportOptions {
   copyright?: string
   headingFont: string
   bodyFont: string
+  /** Optional override for the QR target URL. When omitted, the QR points
+   *  at the chordee.app home page. Pass a /c/<code> URL to make the QR
+   *  open the specific chart this PDF was exported from. */
+  qrUrl?: string
+  /** Optional human-readable label shown below the QR (e.g. "View chart").
+   *  Defaults to the chordee.app brand line. */
+  qrCaption?: string
 }
 
 export function paperDimsPt(size: PaperSize, orient: Orientation) {
@@ -441,13 +448,18 @@ export async function exportChartToPdf(args: {
 
   // Brand overlay assets (logo, QR, link font) — loaded once for the doc.
   const CHORDEE_URL = "https://chordee.app"
+  // QR target: prefer the per-chart share URL when the caller passed one
+  // so scanning the printed page opens this specific chart, not the brand
+  // home page. Falls back to chordee.app for unsigned-in / unsharable
+  // exports.
+  const qrTargetUrl = opts.qrUrl || CHORDEE_URL
   const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
   let logoPng: import("pdf-lib").PDFImage | null = null
   let qrPng: import("pdf-lib").PDFImage | null = null
   try {
     const [logoBytes, qrBytes] = await Promise.all([
       fetchPngBytes("/CHORDEE.png"),
-      generateChordeeQrBytes(CHORDEE_URL),
+      generateChordeeQrBytes(qrTargetUrl),
     ])
     logoPng = await pdfDoc.embedPng(logoBytes)
     qrPng = await pdfDoc.embedPng(qrBytes)
@@ -571,8 +583,9 @@ export async function exportChartToPdf(args: {
         width: qrSize,
         height: qrSize,
       })
-      // Label below the QR
-      const qrLabel = "chordee.app"
+      // Label below the QR — defaults to brand, swapped to a chart-specific
+      // caption when the caller wired qrUrl/qrCaption to a /c/<code> link.
+      const qrLabel = opts.qrCaption || "chordee.app"
       const qrLabelW = helveticaFont.widthOfTextAtSize(qrLabel, 7)
       pdfPage.drawText(qrLabel, {
         x: paperWidthPt - marginPt - qrSize + (qrSize - qrLabelW) / 2,

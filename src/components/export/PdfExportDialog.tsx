@@ -30,6 +30,14 @@ import {
   type PageSpec,
 } from "@/lib/pdfExport"
 import { downloadFile } from "@/lib/io"
+import { useAuthContext } from "@/lib/auth/AuthContext"
+import { saveChart } from "@/lib/cloudSave"
+import {
+  createOwnedShortcode,
+  shareUrl,
+  type Visibility,
+} from "@/lib/cloudShare"
+import { Lock, Eye, Globe } from "lucide-react"
 
 interface PdfExportDialogProps {
   open: boolean
@@ -269,6 +277,8 @@ function PreviewPage({
 }
 
 export function PdfExportDialog({ open, onOpenChange }: PdfExportDialogProps) {
+  const auth = useAuthContext()
+  const chart = useChartStore((s) => s.chart)
   const meta = useChartStore((s) => s.chart.meta)
   const storeBpl = useChartStore((s) => s.chart.meta.measuresPerLine)
   const storeBplMode = useChartStore((s) => s.ui.measuresPerLineMode)
@@ -293,6 +303,9 @@ export function PdfExportDialog({ open, onOpenChange }: PdfExportDialogProps) {
   const [zoom100, setZoom100] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Sharing controls (logged-in only). "none" = QR points to chordee.app
+  // home; otherwise we create/reuse a shortcode and the QR opens the chart.
+  const [shareMode, setShareMode] = useState<"none" | Exclude<Visibility, "private">>("none")
 
   // Reset form when re-opened
   useEffect(() => {
@@ -388,6 +401,21 @@ export function PdfExportDialog({ open, onOpenChange }: PdfExportDialogProps) {
     )
     setExporting(true)
     try {
+      // If the user opted into sharing for this PDF, ensure the chart is
+      // saved and a shortcode exists; the QR will encode that link.
+      let qrUrl: string | undefined
+      let qrCaption: string | undefined
+      if (shareMode !== "none" && auth.isLoggedIn && auth.user && auth.token) {
+        await saveChart(chart, auth.user.id, auth.token)
+        const code = await createOwnedShortcode({
+          chart,
+          ownerId: auth.user.id,
+          token: auth.token,
+          visibility: shareMode,
+        })
+        qrUrl = shareUrl(code)
+        qrCaption = "Scan to view chart"
+      }
       const { bytes, pageCount } = await exportChartToPdf({
         sourceSvg,
         layout,
@@ -401,6 +429,8 @@ export function PdfExportDialog({ open, onOpenChange }: PdfExportDialogProps) {
           copyright: copyright.trim() || undefined,
           headingFont: "PetalumaScript",
           bodyFont: "Inter, system-ui, sans-serif",
+          qrUrl,
+          qrCaption,
         },
       })
       const filename = `${(meta.title || "chart").replace(/[^\w\s-]/g, "_")}.pdf`
@@ -543,6 +573,39 @@ export function PdfExportDialog({ open, onOpenChange }: PdfExportDialogProps) {
                 ))}
               </div>
             </div>
+
+            {auth.isLoggedIn && (
+              <div className="field-group space-y-1.5">
+                <Label className="text-xs">QR target</Label>
+                <div className="flex flex-col gap-1">
+                  {([
+                    { v: "none", label: "chordee.app (default)", Icon: Lock },
+                    { v: "link_view", label: "Share — link can view", Icon: Eye },
+                    { v: "public", label: "Share — public", Icon: Globe },
+                  ] as const).map(({ v, label, Icon }) => {
+                    const isActive = shareMode === v
+                    return (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setShareMode(v)}
+                        className={`pdf-share-mode flex items-center gap-2 rounded px-2 py-1 text-xs font-medium transition-colors ${
+                          isActive
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                        }`}
+                      >
+                        <Icon className="h-3 w-3" />
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  When set to a share, scanning the printed QR opens this chart.
+                </p>
+              </div>
+            )}
 
             <div className="field-group space-y-1.5">
               <Label className="text-xs">Copyright (optional)</Label>

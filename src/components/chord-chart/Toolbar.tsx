@@ -28,6 +28,9 @@ import {
   FilePlus,
   Save,
   Cloud,
+  Library as LibraryIcon,
+  Share2,
+  GitFork,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -47,11 +50,13 @@ import { usePlaybackStore } from "@/lib/plugins/playback/playback-store"
 import { PdfExportDialog } from "@/components/export/PdfExportDialog"
 import { PdfIcon } from "@/components/icons/PdfIcon"
 import { NewScoreDialog } from "./NewScoreDialog"
-import { CloudOpenDialog } from "./CloudOpenDialog"
+import { LibraryDialog } from "@/components/library/LibraryDialog"
+import { ShareDialog } from "@/components/share/ShareDialog"
 import { AccountButton } from "@/components/auth/AccountButton"
 import { AuthModal } from "@/components/auth/AuthModal"
 import { useAuthContext } from "@/lib/auth/AuthContext"
 import { saveChart } from "@/lib/cloudSave"
+import { forkChart } from "@/lib/cloudShare"
 
 type NotationDisplay = "chords" | "both" | "nashville"
 
@@ -293,13 +298,22 @@ export function Toolbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false)
   const [newScoreOpen, setNewScoreOpen] = useState(false)
-  const [cloudOpenOpen, setCloudOpenOpen] = useState(false)
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [savingCloud, setSavingCloud] = useState(false)
+  const [forking, setForking] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const auth = useAuthContext()
+  const readOnly = useChartStore((s) => s.ui.readOnly)
+  const canFork = useChartStore((s) => s.ui.canFork)
+  const activeShare = useChartStore((s) => s.ui.activeShare)
+  const setChart = useChartStore((s) => s.setChart)
+  const clearShareState = useChartStore((s) => s.clearShareState)
+  const showToast = useChartStore((s) => s.showToast)
 
   const handleCloudSave = useCallback(async () => {
+    if (readOnly) return
     if (!auth.isLoggedIn || !auth.user || !auth.token) {
       setAuthModalOpen(true)
       return
@@ -308,12 +322,36 @@ export function Toolbar() {
     setSaveError(null)
     try {
       await saveChart(chart, auth.user.id, auth.token)
+      showToast?.("Saved", "info")
     } catch (e) {
       setSaveError((e as Error).message)
     } finally {
       setSavingCloud(false)
     }
-  }, [auth, chart])
+  }, [auth, chart, readOnly, showToast])
+
+  const handleFork = useCallback(async () => {
+    if (!auth.isLoggedIn || !auth.user || !auth.token) {
+      setAuthModalOpen(true)
+      return
+    }
+    setForking(true)
+    setSaveError(null)
+    try {
+      const fresh = await forkChart(chart, auth.user.id, auth.token)
+      setChart(fresh)
+      clearShareState()
+      // Reset URL so further saves go to the new fork (not the share path).
+      if (typeof window !== "undefined" && window.location.pathname.startsWith("/c/")) {
+        window.history.replaceState(null, "", "/")
+      }
+      showToast?.(`Forked as "${fresh.meta.title}"`, "info")
+    } catch (e) {
+      setSaveError((e as Error).message)
+    } finally {
+      setForking(false)
+    }
+  }, [auth, chart, setChart, clearShareState, showToast])
 
   // Keyboard shortcuts: Cmd/Ctrl+N (new score), Cmd/Ctrl+S (save)
   useEffect(() => {
@@ -686,16 +724,34 @@ export function Toolbar() {
             label={savingCloud ? "Saving…" : "Save to account"}
             shortcut={`${mod}S — cloud save${auth.isLoggedIn ? "" : " (sign in first)"}`}
             onClick={handleCloudSave}
-            disabled={savingCloud}
+            disabled={savingCloud || readOnly}
             className="btn-cloud-save"
           />
           <ToolbarButton
-            icon={Cloud}
-            label="Open from account"
+            icon={LibraryIcon}
+            label="Library"
             shortcut={auth.isLoggedIn ? "Open a saved chart" : "Sign in first"}
-            onClick={() => auth.isLoggedIn ? setCloudOpenOpen(true) : setAuthModalOpen(true)}
-            className="btn-cloud-open"
+            onClick={() => auth.isLoggedIn ? setLibraryOpen(true) : setAuthModalOpen(true)}
+            className="btn-library"
           />
+          <ToolbarButton
+            icon={Share2}
+            label="Share"
+            shortcut="Create a share link"
+            onClick={() => setShareOpen(true)}
+            disabled={readOnly && !canFork}
+            className="btn-share"
+          />
+          {canFork && (
+            <ToolbarButton
+              icon={GitFork}
+              label={forking ? "Forking…" : "Fork to my account"}
+              shortcut="Save a copy you can edit"
+              onClick={handleFork}
+              disabled={forking}
+              className="btn-fork"
+            />
+          )}
           <Separator orientation="vertical" className="toolbar-sep mx-1 h-5 bg-white/20" />
           <ToolbarButton
             icon={Upload}
@@ -742,8 +798,18 @@ export function Toolbar() {
 
       <PdfExportDialog open={pdfDialogOpen} onOpenChange={setPdfDialogOpen} />
       <NewScoreDialog isOpen={newScoreOpen} onClose={() => setNewScoreOpen(false)} />
-      <CloudOpenDialog isOpen={cloudOpenOpen} onClose={() => setCloudOpenOpen(false)} />
+      <LibraryDialog isOpen={libraryOpen} onClose={() => setLibraryOpen(false)} />
+      <ShareDialog isOpen={shareOpen} onClose={() => setShareOpen(false)} />
       <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} auth={auth} />
+      {readOnly && (
+        <div
+          className="read-only-banner fixed left-1/2 top-12 z-40 -translate-x-1/2 rounded-md bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-900 shadow-md dark:bg-amber-950 dark:text-amber-200"
+          role="status"
+        >
+          Viewing a shared chart {activeShare?.source === "anonymous" ? "(snapshot)" : ""} — read only.
+          {canFork && " Fork it to edit."}
+        </div>
+      )}
       {saveError && (
         <div className="toolbar-save-error fixed bottom-4 right-4 z-50 rounded-md bg-red-600 px-3 py-2 text-sm text-white shadow-lg">
           Save failed: {saveError}

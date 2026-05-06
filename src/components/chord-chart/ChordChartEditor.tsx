@@ -10,6 +10,7 @@ import { registerPlugin, getPlugin } from "@/lib/plugins/registry"
 import { playbackPlugin } from "@/lib/plugins/playback"
 import { useListenMode } from "@/lib/plugins/playback/useListenMode"
 import { AuthProvider } from "@/lib/auth/AuthContext"
+import { ShareResolver } from "@/components/share/ShareResolver"
 
 // Register plugins on module load
 registerPlugin(playbackPlugin)
@@ -70,6 +71,7 @@ export function ChordChartEditor() {
 
   return (
     <AuthProvider>
+      <ShareResolver />
       <div
         ref={editorRef}
         data-theme={theme}

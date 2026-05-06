@@ -62,6 +62,19 @@ export interface EditorUIState {
     measureId: string
     anchorRect: { left: number; top: number; width: number; height: number }
   } | null
+  /** Read-only viewing mode (e.g. opened a shared chart you don't own and
+   *  can't edit). Disables Save and edit affordances. */
+  readOnly: boolean
+  /** When read-only, indicates the user can fork a copy into their own
+   *  account. Drives the "Fork to my account" CTA. */
+  canFork: boolean
+  /** Active share metadata when the editor was opened via /c/<code>. */
+  activeShare: {
+    code: string
+    visibility: "private" | "link_view" | "link_edit" | "public"
+    ownerId: string | null
+    source: "owned" | "anonymous"
+  } | null
 }
 
 // ── History ────────────────────────────────────────────────────────────
@@ -89,6 +102,13 @@ export interface ChartState {
   addSection: (name?: string) => void
   updateSection: (id: string, updates: Partial<Section>) => void
   setSectionTimeSignature: (id: string, beats: number, beatUnit: 2 | 4 | 8 | 16) => void
+  setMeasureTimeSignature: (
+    sectionId: string,
+    measureId: string,
+    beats: number,
+    beatUnit: 2 | 4 | 8 | 16
+  ) => void
+  clearMeasureTimeSignature: (sectionId: string, measureId: string) => void
   deleteSection: (id: string) => void
   reorderSections: (fromIndex: number, toIndex: number) => void
 
@@ -136,6 +156,14 @@ export interface ChartState {
   toggleShowInstructions: () => void
   setTheme: (theme: EditorUIState["theme"]) => void
   setArticulationSize: (size: EditorUIState["articulationSize"]) => void
+  /** Configure read-only viewing (e.g. shared link). */
+  setShareState: (state: {
+    readOnly: boolean
+    canFork: boolean
+    activeShare: EditorUIState["activeShare"]
+  }) => void
+  /** Reset share state to a normal owned-editor session. */
+  clearShareState: () => void
   toggleShowKeyboardShortcuts: () => void
   setFontConfig: (config: Partial<FontConfig>) => void
   setJustificationStrategy: (s: "proportional" | "equal") => void
@@ -177,6 +205,48 @@ function findBeat(measure: Measure, beatId: string): Beat | undefined {
 
 function findSlot(beat: Beat, slotId: string): BeatSlot | undefined {
   return beat.slots.find((s) => s.id === slotId)
+}
+
+/** Regroup `section.measures` from index `startIdx` (inclusive) to the end
+ *  of the section into bars of `target` meter. Bars before `startIdx` stay
+ *  unchanged. Beats from the regrouped range are flattened (preserving
+ *  beat data and IDs), padded to a multiple of `target.beats` with empty
+ *  rests, then split into new measures. The first new measure inherits
+ *  the original measure[startIdx].barlineStart; the last new measure
+ *  inherits the original section's final barlineEnd. Interior repeats,
+ *  endings, voltas, and wholeRest flags within the regrouped range are
+ *  reset. */
+function regroupRange(
+  section: Section,
+  startIdx: number,
+  target: TimeSignature
+): void {
+  const tail = section.measures.slice(startIdx)
+  if (tail.length === 0) return
+  const firstStart = tail[0].barlineStart
+  const lastEnd = tail[tail.length - 1].barlineEnd
+  const allBeats: Beat[] = tail.flatMap((m) => m.beats)
+
+  const { beats, beatUnit } = target
+  const remainder = allBeats.length % beats
+  if (remainder !== 0) {
+    const pad = beats - remainder
+    for (let i = 0; i < pad; i++) allBeats.push(createBeat())
+  }
+  if (allBeats.length === 0) {
+    for (let i = 0; i < beats; i++) allBeats.push(createBeat())
+  }
+
+  const newTail: Measure[] = []
+  for (let i = 0; i < allBeats.length; i += beats) {
+    const measure = createMeasure({ beats, beatUnit })
+    measure.beats = allBeats.slice(i, i + beats)
+    newTail.push(measure)
+  }
+  newTail[0].barlineStart = firstStart
+  newTail[newTail.length - 1].barlineEnd = lastEnd
+
+  section.measures = [...section.measures.slice(0, startIdx), ...newTail]
 }
 
 // ── Store ──────────────────────────────────────────────────────────────
@@ -226,6 +296,9 @@ export const useChartStore = create<ChartState>()(
         activePluginPanel: null,
         enabledPlugins: ["playback"],
         endingPicker: null,
+        readOnly: false,
+        canFork: false,
+        activeShare: null,
       },
       history: [],
       historyIndex: -1,
@@ -263,13 +336,52 @@ export const useChartStore = create<ChartState>()(
           const section = findSection(chart, id)
           if (!section) return
           section.timeSignature = { beats, beatUnit }
-          // Adjust each measure to match the new beat count
-          for (const measure of section.measures) {
-            while (measure.beats.length < beats) {
-              measure.beats.push(createBeat())
-            }
-            measure.beats = measure.beats.slice(0, beats)
+          regroupRange(section, 0, { beats, beatUnit })
+          // Section-wide change clears all in-section meter overrides.
+          for (const m of section.measures) delete m.timeSignature
+        })
+      },
+
+      setMeasureTimeSignature: (sectionId, measureId, beats, beatUnit) => {
+        mutateChart("Change time signature", (chart) => {
+          const section = findSection(chart, sectionId)
+          if (!section) return
+          const idx = section.measures.findIndex((m) => m.id === measureId)
+          if (idx < 0) return
+
+          if (idx === 0) {
+            // First bar of section — change the section's starting meter.
+            section.timeSignature = { beats, beatUnit }
+            regroupRange(section, 0, { beats, beatUnit })
+            for (const m of section.measures) delete m.timeSignature
+            return
           }
+
+          // Mid-section override: bars before idx stay; bars from idx
+          // forward get regrouped into the new meter, with the override
+          // recorded on the first new measure.
+          regroupRange(section, idx, { beats, beatUnit })
+          const firstNew = section.measures[idx]
+          if (firstNew) firstNew.timeSignature = { beats, beatUnit }
+        })
+      },
+
+      clearMeasureTimeSignature: (sectionId, measureId) => {
+        mutateChart("Clear time signature change", (chart) => {
+          const section = findSection(chart, sectionId)
+          if (!section) return
+          const idx = section.measures.findIndex((m) => m.id === measureId)
+          if (idx <= 0) return
+          // Effective meter at this bar reverts to whatever the prior bar's
+          // meter was (walk backward).
+          let effective: TimeSignature = section.timeSignature
+          for (let i = 0; i < idx; i++) {
+            const ts = section.measures[i].timeSignature
+            if (ts) effective = ts
+          }
+          regroupRange(section, idx, effective)
+          // Override on this bar is no longer needed.
+          delete section.measures[idx].timeSignature
         })
       },
 
@@ -462,6 +574,10 @@ export const useChartStore = create<ChartState>()(
       toggleShowInstructions: () => set((s) => ({ ui: { ...s.ui, showInstructions: !s.ui.showInstructions } })),
       setTheme: (theme) => set((s) => ({ ui: { ...s.ui, theme } })),
       setArticulationSize: (articulationSize) => set((s) => ({ ui: { ...s.ui, articulationSize } })),
+      setShareState: ({ readOnly, canFork, activeShare }) =>
+        set((s) => ({ ui: { ...s.ui, readOnly, canFork, activeShare } })),
+      clearShareState: () =>
+        set((s) => ({ ui: { ...s.ui, readOnly: false, canFork: false, activeShare: null } })),
       toggleShowKeyboardShortcuts: () => set((s) => ({ ui: { ...s.ui, showKeyboardShortcuts: !s.ui.showKeyboardShortcuts } })),
       setFontConfig: (config) => set((s) => ({ ui: { ...s.ui, fontConfig: { ...s.ui.fontConfig, ...config } } })),
       setJustificationStrategy: (justificationStrategy) => set((s) => ({ ui: { ...s.ui, justificationStrategy } })),
@@ -537,41 +653,68 @@ export const useChartStore = create<ChartState>()(
       },
 
       importJSON: (json) => {
+        // Two failure modes worth distinguishing for the user:
+        //   1. Malformed JSON         → "Couldn't read file (not valid JSON)"
+        //   2. Wrong shape / Zod fail → "File isn't a valid chord chart"
+        // Both surface via toast; the chart is left untouched on either path.
+        let data: unknown
         try {
-          const data = JSON.parse(json)
-          // Strip the embedded style block before validating against ChordChartSchema
-          // (which doesn't know about it) and apply it to UI state after chart loads.
-          let embeddedStyle: UserStyle | null = null
-          if (data && typeof data === "object" && "style" in data && data.style) {
-            const parsed = UserStyleSchema.safeParse(data.style)
-            if (parsed.success) embeddedStyle = parsed.data
-            delete data.style
-          }
-          const chart = ChordChartSchema.parse(data)
-          saveHistory("Import chart")
-          set((s) => {
-            const next: Partial<EditorUIState> = {
-              fontConfig: s.ui.fontConfig,
-              measuresPerLineMode: s.ui.measuresPerLineMode,
-              justificationStrategy: s.ui.justificationStrategy,
-              paperTexture: s.ui.paperTexture,
-              bgColor: s.ui.bgColor,
-            }
-            if (embeddedStyle) {
-              next.fontConfig = { ...s.ui.fontConfig, ...embeddedStyle.fonts } as FontConfig
-              next.measuresPerLineMode = embeddedStyle.layout.measuresPerLineMode
-              next.justificationStrategy = embeddedStyle.layout.justification
-              if (embeddedStyle.page) {
-                next.paperTexture = embeddedStyle.page.texture
-                next.bgColor = embeddedStyle.page.bgColor
-              }
-            }
-            return { chart, ui: { ...s.ui, ...next } }
-          })
-          return true
-        } catch {
+          data = JSON.parse(json)
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          console.error("[importJSON] JSON parse failed:", msg)
+          get().showToast("Couldn't read file — not valid JSON", "error")
           return false
         }
+
+        // Strip the embedded style block before validating against
+        // ChordChartSchema (which doesn't know about it) and apply it to
+        // UI state after chart loads. Style failures are non-fatal — we
+        // warn and fall back to the user's current style.
+        let embeddedStyle: UserStyle | null = null
+        if (data && typeof data === "object" && "style" in data && (data as { style: unknown }).style) {
+          const styleParse = UserStyleSchema.safeParse((data as { style: unknown }).style)
+          if (styleParse.success) {
+            embeddedStyle = styleParse.data
+          } else {
+            console.warn("[importJSON] Embedded style block is invalid, ignoring:", styleParse.error.message)
+            get().showToast("Style block in file was ignored (invalid format)", "warning")
+          }
+          delete (data as { style?: unknown }).style
+        }
+
+        const chartParse = ChordChartSchema.safeParse(data)
+        if (!chartParse.success) {
+          const issue = chartParse.error.issues[0]
+          const where = issue?.path.join(".") || "<root>"
+          const msg = `${issue?.message ?? "validation failed"} at ${where}`
+          console.error("[importJSON] schema validation failed:", chartParse.error.issues)
+          get().showToast(`File isn't a valid chord chart — ${msg}`, "error")
+          return false
+        }
+
+        const chart = chartParse.data
+        saveHistory("Import chart")
+        set((s) => {
+          const next: Partial<EditorUIState> = {
+            fontConfig: s.ui.fontConfig,
+            measuresPerLineMode: s.ui.measuresPerLineMode,
+            justificationStrategy: s.ui.justificationStrategy,
+            paperTexture: s.ui.paperTexture,
+            bgColor: s.ui.bgColor,
+          }
+          if (embeddedStyle) {
+            next.fontConfig = { ...s.ui.fontConfig, ...embeddedStyle.fonts } as FontConfig
+            next.measuresPerLineMode = embeddedStyle.layout.measuresPerLineMode
+            next.justificationStrategy = embeddedStyle.layout.justification
+            if (embeddedStyle.page) {
+              next.paperTexture = embeddedStyle.page.texture
+              next.bgColor = embeddedStyle.page.bgColor
+            }
+          }
+          return { chart, ui: { ...s.ui, ...next } }
+        })
+        return true
       },
     }
   })
