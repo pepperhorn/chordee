@@ -1,3 +1,4 @@
+import { memo } from "react"
 import type { LayoutBar } from "@/lib/layout/types"
 import { BeatSlotGroup } from "./BeatSlotGroup"
 import { Barline } from "./Barline"
@@ -9,10 +10,8 @@ import {
   useFontConfigField,
 } from "@/lib/fontConfigContext"
 import { estimateClefKeySigWidth } from "@/lib/keySignature"
-import {
-  isUnclosedRepeatStart,
-  isOrphanedRepeatEnd,
-} from "@/lib/barlineValidation"
+import { getStaveMetrics, STAVE_HEIGHT } from "@/lib/layout/constants"
+import { useBarlineHints } from "@/lib/barlineValidation"
 import {
   useVoltaSlice,
   useRegionFor,
@@ -24,11 +23,20 @@ interface BarGroupProps {
   lineY: number
 }
 
-export function BarGroup({ bar, lineY }: BarGroupProps) {
+function BarGroupImpl({ bar, lineY }: BarGroupProps) {
   const selection = useChartStore((s) => s.ui.selection)
   const cycleBarline = useChartStore((s) => s.cycleBarline)
   const openEndingPicker = useChartStore((s) => s.openEndingPicker)
   const isSelected = selection?.measureId === bar.measureId
+  // First bar of a section is treated as a section boundary, not an
+  // interior bar of any open repeat region — clicking its start barline
+  // should cycle freely (to set up a fresh repeatStart, etc.) rather
+  // than getting hijacked by the ending picker.
+  const isSectionFirstBar = useChartStore(
+    (s) =>
+      s.chart.sections.find((sec) => sec.id === bar.sectionId)?.measures[0]
+        ?.id === bar.measureId,
+  )
   const showSlashes = useChartStore((s) => s.ui.showSlashes)
   const showDynamics = useChartStore((s) => s.ui.showDynamics)
   const showLyrics = useChartStore((s) => s.ui.showLyrics)
@@ -42,34 +50,21 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
   const liveRegion = useRegionFor(bar.measureId)
   const voltaSlice = useVoltaSlice(bar.measureId)
 
-  // "Don't forget to close this repeat" hint — only on the offending bar.
-  // Pulled from live store state instead of subscribing to the whole chart.
-  const startBarUnclosed = useChartStore((s) =>
-    bar.startBarline === "repeatStart"
-      ? isUnclosedRepeatStart(s.chart, bar.sectionId, bar.measureId, "start")
-      : false,
-  )
-  const endBarUnclosed = useChartStore((s) =>
-    bar.endBarline === "repeatStart"
-      ? isUnclosedRepeatStart(s.chart, bar.sectionId, bar.measureId, "end")
-      : false,
-  )
-  // "Add an ending OR new start repeat" hint — fires when a close-repeat
-  // has no opener anywhere in the chart. Multi-close scenarios (each
-  // close delimits an ending) are NOT orphans and don't trigger the hint.
-  // Also suppressed when the bar is already part of an ending structure.
-  const startBarOrphanEndRaw = useChartStore((s) =>
-    bar.startBarline === "repeatEnd"
-      ? isOrphanedRepeatEnd(s.chart, bar.sectionId, bar.measureId, "start")
-      : false,
-  )
-  const endBarOrphanEndRaw = useChartStore((s) =>
-    bar.endBarline === "repeatEnd"
-      ? isOrphanedRepeatEnd(s.chart, bar.sectionId, bar.measureId, "end")
-      : false,
-  )
-  const startBarOrphanEnd = startBarOrphanEndRaw && !voltaSlice
-  const endBarOrphanEnd = endBarOrphanEndRaw && !voltaSlice
+  // Repeat-validation hints come from a single per-chart walk done in
+  // ChartSVG and threaded via BarlineHintsContext, instead of every bar
+  // re-walking the chart on every store change.
+  const hints = useBarlineHints(bar.measureId)
+  const startBarUnclosed =
+    bar.startBarline === "repeatStart" && hints.startUnclosed
+  const endBarUnclosed =
+    bar.endBarline === "repeatStart" && hints.endUnclosed
+  // Orphan-close hints are suppressed when the bar already participates
+  // in an ending structure — multi-close scenarios are intentional, not
+  // broken.
+  const startBarOrphanEnd =
+    bar.startBarline === "repeatEnd" && hints.startOrphan && !voltaSlice
+  const endBarOrphanEnd =
+    bar.endBarline === "repeatEnd" && hints.endOrphan && !voltaSlice
 
   /** Open the chart-level Ending picker anchored at the clicked element.
    *  Resolves the *owner* bar — for mid-slice clicks the picker still
@@ -103,6 +98,7 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
     if (
       liveRegion &&
       !voltaSlice &&
+      !isSectionFirstBar &&
       bar.startBarline !== "repeatStart" &&
       bar.startBarline !== "repeatEnd" &&
       e
@@ -128,7 +124,7 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
 
   const chordScale = useEffectiveScale("chordSize")
   const clefScale = useEffectiveScale("clefSize")
-  const staveY = Math.round(14 * chordScale) + 6
+  const { staveY, hintTextOffset, voltaBracketOffset } = getStaveMetrics(chordScale)
 
   const showKeySig = useChartStore((s) => s.chart.meta.showKeySignature ?? true)
   const shouldShowClef = !!bar.showClef && showClefSetting
@@ -159,7 +155,7 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
           x={0}
           y={0}
           width={bar.width}
-          height={56}
+          height={STAVE_HEIGHT + 24}
           fill="hsl(var(--chart-primary))"
           opacity={0.08}
           rx={3}
@@ -173,7 +169,7 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
           keyName={chartKey}
           x={clefX}
           y={staveY}
-          staffHeight={32}
+          staffHeight={STAVE_HEIGHT}
           showClef={shouldShowClef}
           showKeySig={shouldShowKeySig}
         />
@@ -186,7 +182,7 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
           beatUnit={bar.timeSignature.beatUnit}
           x={timeSigX + clefKeySigWidth}
           y={staveY}
-          height={32}
+          height={STAVE_HEIGHT}
         />
       )}
 
@@ -195,7 +191,7 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
         <Barline
           style={bar.startBarline}
           x={0}
-          height={32}
+          height={STAVE_HEIGHT}
           yOffset={staveY}
           onCycle={cycleStartBarline}
         />
@@ -221,7 +217,7 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
         <Barline
           style={bar.endBarline}
           x={bar.width}
-          height={32}
+          height={STAVE_HEIGHT}
           yOffset={staveY}
           onCycle={cycleEndBarline}
         />
@@ -232,7 +228,7 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
         <g
           className="barline-unclosed-hint"
           pointerEvents="none"
-          transform={`translate(${startBarUnclosed ? 0 : bar.width}, ${-Math.round(24 * chordScale)})`}
+          transform={`translate(${startBarUnclosed ? 0 : bar.width}, ${hintTextOffset})`}
         >
           <text
             x={4}
@@ -252,7 +248,7 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
         <g
           className="barline-orphan-end-hint"
           pointerEvents="none"
-          transform={`translate(${startBarOrphanEnd ? 0 : bar.width}, ${-Math.round(24 * chordScale)})`}
+          transform={`translate(${startBarOrphanEnd ? 0 : bar.width}, ${hintTextOffset})`}
         >
           <text
             x={4}
@@ -291,7 +287,7 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
         <VoltaBracket
           slice={voltaSlice}
           width={bar.width}
-          y={-Math.round(28 * chordScale)}
+          y={voltaBracketOffset}
           onClick={(e) =>
             openPickerForOwner(
               e,
@@ -304,6 +300,8 @@ export function BarGroup({ bar, lineY }: BarGroupProps) {
     </g>
   )
 }
+
+export const BarGroup = memo(BarGroupImpl)
 
 // ── Repeat-ending bracket ──────────────────────────────────────────────
 

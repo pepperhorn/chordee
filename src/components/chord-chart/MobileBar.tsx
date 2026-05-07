@@ -5,6 +5,7 @@ import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 import type { LayoutResult } from "@/lib/layout/types"
 import { TouchControls } from "./TouchControls"
 import { SelectionProperties } from "./PropertiesPanel"
+import { TimePanel } from "./TimePanel"
 
 interface MobileBarProps {
   layout: LayoutResult | null
@@ -12,6 +13,7 @@ interface MobileBarProps {
 
 export function MobileBar({ layout }: MobileBarProps) {
   const [expanded, setExpanded] = useState(false)
+  const [tab, setTab] = useState<"selection" | "time">("selection")
 
   const selection = useChartStore((s) => s.ui.selection)
   const setSelection = useChartStore((s) => s.setSelection)
@@ -123,21 +125,49 @@ export function MobileBar({ layout }: MobileBarProps) {
           ~55vh so the keyboard stays above the fold. */}
       <div className="mobile-kb-tools max-h-[55vh] overflow-y-auto">
         {selection && (
-          <div className="mobile-kb-selection border-b px-3 py-2">
-            <SelectionProperties
-              selection={selection}
-              chart={chart}
-              updateSection={updateSection}
-              setSectionTimeSignature={setSectionTimeSignature}
-              deleteSection={deleteSection}
-              addSection={addSection}
-              updateMeasure={updateMeasure}
-              updateBeat={updateBeat}
-              setBeatDivision={setBeatDivision}
-              addMeasure={addMeasure}
-              deleteMeasure={deleteMeasure}
-            />
-          </div>
+          <>
+            <div className="mobile-kb-tabs flex gap-1 border-b px-3 py-1.5">
+              <button
+                className={`mobile-kb-tab flex-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
+                  tab === "selection"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                }`}
+                onClick={() => setTab("selection")}
+              >
+                Selection
+              </button>
+              <button
+                className={`mobile-kb-tab flex-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
+                  tab === "time"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                }`}
+                onClick={() => setTab("time")}
+              >
+                Time
+              </button>
+            </div>
+            <div className="mobile-kb-selection border-b px-3 py-2">
+              {tab === "selection" ? (
+                <SelectionProperties
+                  selection={selection}
+                  chart={chart}
+                  updateSection={updateSection}
+                  setSectionTimeSignature={setSectionTimeSignature}
+                  deleteSection={deleteSection}
+                  addSection={addSection}
+                  updateMeasure={updateMeasure}
+                  updateBeat={updateBeat}
+                  setBeatDivision={setBeatDivision}
+                  addMeasure={addMeasure}
+                  deleteMeasure={deleteMeasure}
+                />
+              ) : (
+                <TimePanel />
+              )}
+            </div>
+          </>
         )}
         <TouchControls />
       </div>

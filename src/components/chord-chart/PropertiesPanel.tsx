@@ -21,7 +21,9 @@ import { BARLINE_TYPES, DYNAMICS, SECTION_PRESETS, TIME_SIGNATURES, NAVIGATION_T
 import { formatChord } from "@/lib/utils"
 import { ConfirmDialog } from "./ConfirmDialog"
 import { TouchControls } from "./TouchControls"
+import { TimePanel } from "./TimePanel"
 import type { Division } from "@/lib/schema"
+import { BarlineSchema, ClefSchema, NavigationTypeSchema } from "@/lib/schema"
 
 export function PropertiesPanel() {
   const [collapsed, setCollapsed] = useState(() =>
@@ -99,10 +101,11 @@ export function PropertiesPanel() {
 
       <ScrollArea className="flex-1">
         <Tabs defaultValue="chart" className="w-full">
-          <TabsList className="tab-list mx-3 mt-2 grid h-auto w-[calc(100%-1.5rem)] grid-cols-3 gap-1 p-1">
+          <TabsList className="tab-list mx-3 mt-2 grid h-auto w-[calc(100%-1.5rem)] grid-cols-4 gap-1 p-1">
             <TabsTrigger value="chart" className="tab-chart text-xs">Chart</TabsTrigger>
-            <TabsTrigger value="layout" className="tab-layout text-xs">Layout</TabsTrigger>
             <TabsTrigger value="tools" className="tab-tools text-xs">Tools</TabsTrigger>
+            <TabsTrigger value="layout" className="tab-layout text-xs">Layout</TabsTrigger>
+            <TabsTrigger value="time" className="tab-time text-xs">Time</TabsTrigger>
           </TabsList>
 
           <TabsContent value="chart" className="chart-tab px-3 pb-4">
@@ -179,7 +182,10 @@ export function PropertiesPanel() {
                   <Label className="field-label text-xs">Clef</Label>
                   <Select
                     value={meta.clef}
-                    onValueChange={(v) => updateMeta({ clef: v as any })}
+                    onValueChange={(v) => {
+                      const parsed = ClefSchema.safeParse(v)
+                      if (parsed.success) updateMeta({ clef: parsed.data })
+                    }}
                   >
                     <SelectTrigger className="field-select h-8 text-sm">
                       <SelectValue />
@@ -626,6 +632,10 @@ export function PropertiesPanel() {
             <Separator className="my-4" />
             <TouchControls compact />
           </TabsContent>
+
+          <TabsContent value="time" className="time-tab px-3 pb-4 pt-2">
+            <TimePanel />
+          </TabsContent>
         </Tabs>
       </ScrollArea>
     </div>
@@ -742,11 +752,16 @@ export function SelectionProperties({
             <Label className="field-label text-xs">Navigation</Label>
             <Select
               value={section.navigation?.type ?? "none"}
-              onValueChange={(v) =>
-                updateSection(section.id, {
-                  navigation: v === "none" ? undefined : { type: v as any },
-                })
-              }
+              onValueChange={(v) => {
+                if (v === "none") {
+                  updateSection(section.id, { navigation: undefined })
+                  return
+                }
+                const parsed = NavigationTypeSchema.safeParse(v)
+                if (parsed.success) {
+                  updateSection(section.id, { navigation: { type: parsed.data } })
+                }
+              }}
             >
               <SelectTrigger className="field-select h-8 text-sm">
                 <SelectValue />
@@ -813,9 +828,12 @@ export function SelectionProperties({
                 <Label className="field-label text-xs">Start Barline</Label>
                 <Select
                   value={measure.barlineStart}
-                  onValueChange={(v) =>
-                    updateMeasure(section.id, measure.id, { barlineStart: v as any })
-                  }
+                  onValueChange={(v) => {
+                    const parsed = BarlineSchema.safeParse(v)
+                    if (parsed.success) {
+                      updateMeasure(section.id, measure.id, { barlineStart: parsed.data })
+                    }
+                  }}
                 >
                   <SelectTrigger className="field-select h-8 text-sm">
                     <SelectValue />
@@ -831,9 +849,12 @@ export function SelectionProperties({
                 <Label className="field-label text-xs">End Barline</Label>
                 <Select
                   value={measure.barlineEnd}
-                  onValueChange={(v) =>
-                    updateMeasure(section.id, measure.id, { barlineEnd: v as any })
-                  }
+                  onValueChange={(v) => {
+                    const parsed = BarlineSchema.safeParse(v)
+                    if (parsed.success) {
+                      updateMeasure(section.id, measure.id, { barlineEnd: parsed.data })
+                    }
+                  }}
                 >
                   <SelectTrigger className="field-select h-8 text-sm">
                     <SelectValue />

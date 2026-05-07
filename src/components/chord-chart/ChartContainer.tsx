@@ -59,7 +59,7 @@ export function ChartContainer() {
     >
       <div
         ref={containerRef}
-        className="chart-container relative flex-1 overflow-auto"
+        className="chart-container relative flex-1 overflow-auto max-md:px-[10px]"
         data-zoom={zoom}
         style={{ minHeight: 0 }}
       >

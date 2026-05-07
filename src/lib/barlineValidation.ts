@@ -1,3 +1,4 @@
+import { createContext, useContext } from "react"
 import type { ChordChart, Barline as BarlineStyle } from "./schema"
 
 // Order used by the tap-to-cycle UI.
@@ -177,4 +178,96 @@ export function isUnclosedRepeatStart(
     }
   }
   return started && net > 0
+}
+
+// ── Precomputed hint map ───────────────────────────────────────────────
+
+/**
+ * Per-render hint map computed once per chart in ChartSVG and threaded
+ * via context. Replaces 4× per-bar calls to `isUnclosedRepeatStart` /
+ * `isOrphanedRepeatEnd` (each O(bars)) with a single O(bars) walk.
+ *
+ * Each set holds measure ids whose start- or end-side barline triggers
+ * the corresponding hint. Bars not in any set show no hint.
+ */
+export interface BarlineHints {
+  startUnclosed: Set<string>
+  endUnclosed: Set<string>
+  startOrphan: Set<string>
+  endOrphan: Set<string>
+}
+
+export function computeBarlineHints(chart: ChordChart): BarlineHints {
+  const hints: BarlineHints = {
+    startUnclosed: new Set(),
+    endUnclosed: new Set(),
+    startOrphan: new Set(),
+    endOrphan: new Set(),
+  }
+  // Track open repeats as a stack of (measureId, side). Anything left on
+  // the stack at end-of-walk is unclosed. Stack semantics match the
+  // existing single-target `isUnclosedRepeatStart` walk: a repeatEnd
+  // closes the most-recent unclosed start.
+  type Open = { measureId: string; side: "start" | "end" }
+  const open: Open[] = []
+  // Orphan close-repeat detection: a repeatEnd is orphaned only if NO
+  // repeatStart appears strictly before it in chart order.
+  let seenStart = false
+
+  for (const section of chart.sections) {
+    for (const measure of section.measures) {
+      // Start side
+      if (measure.barlineStart === "repeatStart") {
+        open.push({ measureId: measure.id, side: "start" })
+        seenStart = true
+      } else if (measure.barlineStart === "repeatEnd") {
+        if (!seenStart) hints.startOrphan.add(measure.id)
+        if (open.length > 0) open.pop()
+      }
+      // End side
+      if (measure.barlineEnd === "repeatStart") {
+        open.push({ measureId: measure.id, side: "end" })
+        seenStart = true
+      } else if (measure.barlineEnd === "repeatEnd") {
+        if (!seenStart) hints.endOrphan.add(measure.id)
+        if (open.length > 0) open.pop()
+      }
+    }
+  }
+
+  for (const o of open) {
+    if (o.side === "start") hints.startUnclosed.add(o.measureId)
+    else hints.endUnclosed.add(o.measureId)
+  }
+
+  return hints
+}
+
+/** React context carrying the precomputed barline hint map from
+ *  ChartSVG down to BarGroups. Avoids O(bars²) per-render walks. */
+export const BarlineHintsContext = createContext<BarlineHints | null>(null)
+
+export interface BarHintFlags {
+  startUnclosed: boolean
+  endUnclosed: boolean
+  startOrphan: boolean
+  endOrphan: boolean
+}
+
+const EMPTY_HINTS: BarHintFlags = {
+  startUnclosed: false,
+  endUnclosed: false,
+  startOrphan: false,
+  endOrphan: false,
+}
+
+export function useBarlineHints(measureId: string): BarHintFlags {
+  const map = useContext(BarlineHintsContext)
+  if (!map) return EMPTY_HINTS
+  return {
+    startUnclosed: map.startUnclosed.has(measureId),
+    endUnclosed: map.endUnclosed.has(measureId),
+    startOrphan: map.startOrphan.has(measureId),
+    endOrphan: map.endOrphan.has(measureId),
+  }
 }

@@ -11,6 +11,10 @@ import {
   VoltaSlicesContext,
   RegionMapContext,
 } from "@/lib/voltaState"
+import {
+  computeBarlineHints,
+  BarlineHintsContext,
+} from "@/lib/barlineValidation"
 
 interface ChartSVGProps {
   layout: LayoutResult
@@ -45,6 +49,7 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
   // render (the per-render walk used to be O(bars²)).
   const voltaSlices = useMemo(() => computeVoltaSlices(chart), [chart])
   const regionMap = useMemo(() => computeRegionMap(chart), [chart])
+  const barlineHints = useMemo(() => computeBarlineHints(chart), [chart])
 
   // For each section, remember the last bar rendered (by line + rect) so we
   // can draw a "+ add bar" affordance at its right edge.
@@ -109,6 +114,7 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
 
   return (
     <FontConfigOverrideProvider value={fontConfigOverride ?? null}>
+    <BarlineHintsContext.Provider value={barlineHints}>
     <RegionMapContext.Provider value={regionMap}>
     <VoltaSlicesContext.Provider value={voltaSlices}>
     <svg
@@ -279,6 +285,7 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
     </svg>
     </VoltaSlicesContext.Provider>
     </RegionMapContext.Provider>
+    </BarlineHintsContext.Provider>
     </FontConfigOverrideProvider>
   )
 }
