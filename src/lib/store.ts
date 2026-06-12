@@ -33,6 +33,18 @@ import { SAMPLE_CHART } from "./sampleChart"
 
 // ── UI State ───────────────────────────────────────────────────────────
 
+/** Editable chart-level meta fields that can be focused by clicking the
+ *  corresponding rendered text item. Matches the meta input ids in
+ *  PropertiesPanel (`meta-field-<name>`). */
+export type MetaField =
+  | "title"
+  | "subtitle"
+  | "composer"
+  | "arranger"
+  | "copyright"
+  | "footerText"
+  | "style"
+
 export interface EditorUIState {
   selection: Selection | null
   isPlaying: boolean
@@ -49,6 +61,10 @@ export interface EditorUIState {
   measuresPerLineMode: "auto" | "fixed"
   editMode: "chord" | "rhythm"
   activeInput: "none" | "chord" | "dynamic" | "timesig" | "keysig"
+  /** Transient signal: when set, the Properties panel opens its Chart tab and
+   *  focuses the matching meta field. Cleared back to null once focused.
+   *  Set by clicking a chart-level text item (title, composer, …). */
+  focusField: MetaField | null
   paperTexture: "none" | "subtle" | "crumpled"
   bgColor: string
   toast: { message: string; type: "info" | "warning" | "error"; id: number } | null
@@ -171,6 +187,7 @@ export interface ChartState {
   toggleEditMode: () => void
   setEditMode: (mode: "chord" | "rhythm") => void
   setActiveInput: (input: "none" | "chord" | "dynamic" | "timesig" | "keysig") => void
+  setFocusField: (field: MetaField | null) => void
   setPaperTexture: (texture: "none" | "subtle" | "crumpled") => void
   setBgColor: (color: string) => void
   showToast: (message: string, type?: "info" | "warning" | "error") => void
@@ -290,6 +307,7 @@ export const useChartStore = create<ChartState>()(
         measuresPerLineMode: "auto",
         editMode: "chord",
         activeInput: "none",
+        focusField: null,
         paperTexture: "subtle",
         bgColor: "#ffffff",
         toast: null,
@@ -585,6 +603,7 @@ export const useChartStore = create<ChartState>()(
       toggleEditMode: () => set((s) => ({ ui: { ...s.ui, editMode: s.ui.editMode === "chord" ? "rhythm" : "chord" } })),
       setEditMode: (editMode) => set((s) => ({ ui: { ...s.ui, editMode } })),
       setActiveInput: (activeInput) => set((s) => ({ ui: { ...s.ui, activeInput } })),
+      setFocusField: (focusField) => set((s) => ({ ui: { ...s.ui, focusField } })),
       setPaperTexture: (paperTexture) => set((s) => ({ ui: { ...s.ui, paperTexture } })),
       setBgColor: (bgColor) => set((s) => ({ ui: { ...s.ui, bgColor } })),
       showToast: (message, type = "info") => {
@@ -719,3 +738,8 @@ export const useChartStore = create<ChartState>()(
     }
   })
 )
+
+// TEMP DEBUG HOOK — remove after investigation
+if (typeof window !== "undefined") {
+  ;(window as unknown as { __chartStore: typeof useChartStore }).__chartStore = useChartStore
+}

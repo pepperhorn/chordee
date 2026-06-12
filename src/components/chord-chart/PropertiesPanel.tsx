@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,6 +27,7 @@ export function PropertiesPanel() {
   const [collapsed, setCollapsed] = useState(() =>
     typeof window !== "undefined" && window.innerWidth < 768
   )
+  const [tab, setTab] = useState("chart")
   const [expandedFonts, setExpandedFonts] = useState<Record<string, boolean>>({})
   const toggleFontExpanded = (key: string) =>
     setExpandedFonts((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -58,6 +59,32 @@ export function PropertiesPanel() {
     else setPaperTexture("none")
   }
   const selection = useChartStore((s) => s.ui.selection)
+  const focusField = useChartStore((s) => s.ui.focusField)
+  const setFocusField = useChartStore((s) => s.setFocusField)
+
+  // Clicking a chart-level text item sets `focusField`. Open the panel, switch
+  // to the Chart tab, then focus + select the matching input once it's mounted.
+  useEffect(() => {
+    if (!focusField) return
+    setCollapsed(false)
+    setTab("chart")
+    let raf2 = 0
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        const el = document.getElementById(`meta-field-${focusField}`) as HTMLInputElement | null
+        if (el) {
+          el.focus()
+          el.select()
+          el.scrollIntoView({ block: "center", behavior: "smooth" })
+        }
+        setFocusField(null)
+      })
+    })
+    return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+    }
+  }, [focusField, setFocusField])
 
   if (collapsed) {
     return (
@@ -98,7 +125,7 @@ export function PropertiesPanel() {
       </div>
 
       <ScrollArea className="flex-1">
-        <Tabs defaultValue="chart" className="w-full">
+        <Tabs value={tab} onValueChange={setTab} className="w-full">
           <TabsList className="tab-list mx-3 mt-2 grid h-auto w-[calc(100%-1.5rem)] grid-cols-3 gap-1 p-1">
             <TabsTrigger value="chart" className="tab-chart text-xs">Chart</TabsTrigger>
             <TabsTrigger value="layout" className="tab-layout text-xs">Layout</TabsTrigger>
@@ -259,6 +286,7 @@ export function PropertiesPanel() {
               <div className="field-group space-y-1">
                 <Label className="field-label text-xs">Title</Label>
                 <Input
+                  id="meta-field-title"
                   className="field-input h-8 text-sm"
                   value={meta.title}
                   onChange={(e) => updateMeta({ title: e.target.value })}
@@ -268,6 +296,7 @@ export function PropertiesPanel() {
               <div className="field-group space-y-1">
                 <Label className="field-label text-xs">Subtitle</Label>
                 <Input
+                  id="meta-field-subtitle"
                   className="field-input h-8 text-sm"
                   value={meta.subtitle ?? ""}
                   onChange={(e) => updateMeta({ subtitle: e.target.value })}
@@ -278,6 +307,7 @@ export function PropertiesPanel() {
               <div className="field-group space-y-1">
                 <Label className="field-label text-xs">Composer</Label>
                 <Input
+                  id="meta-field-composer"
                   className="field-input h-8 text-sm"
                   value={meta.composer}
                   onChange={(e) => updateMeta({ composer: e.target.value })}
@@ -287,6 +317,7 @@ export function PropertiesPanel() {
               <div className="field-group space-y-1">
                 <Label className="field-label text-xs">Arranger</Label>
                 <Input
+                  id="meta-field-arranger"
                   className="field-input h-8 text-sm"
                   value={meta.arranger}
                   onChange={(e) => updateMeta({ arranger: e.target.value })}
@@ -297,6 +328,7 @@ export function PropertiesPanel() {
               <div className="field-group space-y-1">
                 <Label className="field-label text-xs">Copyright</Label>
                 <Input
+                  id="meta-field-copyright"
                   className="field-input h-8 text-sm"
                   value={meta.copyright ?? ""}
                   onChange={(e) => updateMeta({ copyright: e.target.value })}
@@ -307,6 +339,7 @@ export function PropertiesPanel() {
               <div className="field-group space-y-1">
                 <Label className="field-label text-xs">Footer Text</Label>
                 <Input
+                  id="meta-field-footerText"
                   className="field-input h-8 text-sm"
                   value={meta.footerText ?? ""}
                   onChange={(e) => updateMeta({ footerText: e.target.value })}
@@ -317,6 +350,7 @@ export function PropertiesPanel() {
               <div className="field-group space-y-1">
                 <Label className="field-label text-xs">Style</Label>
                 <Input
+                  id="meta-field-style"
                   className="field-input h-8 text-sm"
                   value={meta.style ?? ""}
                   onChange={(e) => updateMeta({ style: e.target.value })}

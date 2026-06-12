@@ -122,16 +122,25 @@ export function useKeyboardNavigation(layout: LayoutResult | null) {
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      // k — open key signature picker (works everywhere, k is never a valid chord character)
-      if (e.key === "k" && !e.metaKey && !e.ctrlKey) {
+      // Is focus inside a form field? If so, only the chord-entry input (marked
+      // with data-chord-entry) gets shortcut keys — normal text fields like
+      // Title or Composer must receive every character, including "k" and "l".
+      const target = e.target as HTMLElement
+      const tag = target?.tagName
+      const isFormField = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT"
+      const isChordEntry = isFormField && target?.dataset?.chordEntry !== undefined
+
+      // k — open key signature picker. "k" is never a valid chord character, so
+      // it doubles as the keysig shortcut when nothing or the chord input is
+      // focused; in any other text field it must type literally.
+      if (e.key === "k" && !e.metaKey && !e.ctrlKey && (!isFormField || isChordEntry)) {
         e.preventDefault()
         useChartStore.getState().setActiveInput("keysig")
         return
       }
 
-      // Don't handle other keys if focused on an input
-      const tag = (e.target as HTMLElement)?.tagName
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return
+      // Don't handle other navigation/shortcut keys while typing in a field
+      if (isFormField) return
 
       const entries = getEntries()
       if (entries.length === 0) return

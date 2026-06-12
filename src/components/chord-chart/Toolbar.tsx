@@ -522,6 +522,7 @@ export function Toolbar() {
               <TooltipTrigger asChild>
                 <Input
                   ref={chordInputRef}
+                  data-chord-entry=""
                   className="toolbar-chord-input h-7 w-24 text-sm"
                   value={chordValue || currentSlotChord}
                   onChange={(e) => setChordValue(e.target.value)}

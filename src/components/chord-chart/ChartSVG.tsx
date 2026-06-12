@@ -39,6 +39,8 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
     : storeFc
   const setSelection = useChartStore((s) => s.setSelection)
   const addMeasure = useChartStore((s) => s.addMeasure)
+  const deleteMeasure = useChartStore((s) => s.deleteMeasure)
+  const setFocusField = useChartStore((s) => s.setFocusField)
 
   // Precompute ending slices and the measure→region lookup once per
   // chart change — cheaper than each BarGroup walking the chart on every
@@ -50,15 +52,18 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
   // can draw a "+ add bar" affordance at its right edge.
   const addBarAnchors = new Map<
     string,
-    { lineY: number; x: number; height: number }
+    { lineY: number; x: number; height: number; measureId: string; count: number }
   >()
   for (const line of layout.lines) {
     for (const el of line.elements) {
       if (el.type === "bar") {
+        const prev = addBarAnchors.get(el.sectionId)
         addBarAnchors.set(el.sectionId, {
           lineY: line.y,
           x: el.x + el.width,
           height: 32,
+          measureId: el.measureId,
+          count: (prev?.count ?? 0) + 1,
         })
       }
     }
@@ -140,6 +145,11 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
             fontWeight={700}
             fontFamily={`${fc.heading}, serif`}
             fill={fc.headingColor ?? "currentColor"}
+            style={{ cursor: "pointer" }}
+            onClick={(e) => {
+              e.stopPropagation()
+              setFocusField("title")
+            }}
           >
             {meta.title}
           </text>
@@ -155,6 +165,11 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
               fontFamily={`${fc.subtitle}, serif`}
               fill={fc.subtitleColor ?? "currentColor"}
               opacity={0.6}
+              style={{ cursor: "pointer" }}
+              onClick={(e) => {
+                e.stopPropagation()
+                setFocusField("subtitle")
+              }}
             >
               {meta.subtitle}
             </text>
@@ -171,6 +186,11 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
               fontFamily={`${fc.body}, sans-serif`}
               fill={fc.bodyColor ?? "currentColor"}
               opacity={0.6}
+              style={{ cursor: "pointer" }}
+              onClick={(e) => {
+                e.stopPropagation()
+                setFocusField("composer")
+              }}
             >
               {[meta.composer, meta.arranger && `arr. ${meta.arranger}`].filter(Boolean).join(" — ")}
             </text>
@@ -187,6 +207,11 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
               fontFamily={`${fc.body}, sans-serif`}
               fill={fc.bodyColor ?? "currentColor"}
               opacity={0.6}
+              style={{ cursor: "pointer" }}
+              onClick={(e) => {
+                e.stopPropagation()
+                setFocusField("style")
+              }}
             >
               {[tempoString, meta.style].filter(Boolean).join("  ")}
             </text>
@@ -207,35 +232,63 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
           </g>
         ))}
 
-        {/* "+" add-bar buttons, positioned at each section's last bar */}
+        {/* "+" add-bar / "−" remove-bar buttons at each section's last bar */}
         {Array.from(addBarAnchors.entries()).map(([sectionId, anchor]) => {
           const cx = anchor.x + 14
           const cy = anchor.lineY + anchor.height / 2 + 6
           return (
-            <g
-              key={`add-bar-${sectionId}`}
-              className="add-bar-btn"
-              transform={`translate(${cx}, ${cy})`}
-              style={{ cursor: "pointer" }}
-              onClick={(e) => {
-                e.stopPropagation()
-                addMeasure(sectionId)
-              }}
-            >
-              <rect
-                x={-9}
-                y={-9}
-                width={18}
-                height={18}
-                rx={3}
-                fill="hsl(var(--background))"
-                stroke="currentColor"
-                strokeOpacity={0.35}
-                strokeWidth={1}
-              />
-              <line x1={-5} y1={0} x2={5} y2={0} stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
-              <line x1={0} y1={-5} x2={0} y2={5} stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
-              <title>Add bar to this section</title>
+            <g key={`bar-controls-${sectionId}`} className="bar-controls">
+              {/* Add bar */}
+              <g
+                className="add-bar-btn"
+                transform={`translate(${cx}, ${cy - 11})`}
+                style={{ cursor: "pointer" }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  addMeasure(sectionId)
+                }}
+              >
+                <rect
+                  x={-9}
+                  y={-9}
+                  width={18}
+                  height={18}
+                  rx={3}
+                  fill="hsl(var(--background))"
+                  stroke="currentColor"
+                  strokeOpacity={0.35}
+                  strokeWidth={1}
+                />
+                <line x1={-5} y1={0} x2={5} y2={0} stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+                <line x1={0} y1={-5} x2={0} y2={5} stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+                <title>Add bar to this section</title>
+              </g>
+              {/* Remove last bar — hidden when only one bar remains */}
+              {anchor.count > 1 && (
+                <g
+                  className="remove-bar-btn"
+                  transform={`translate(${cx}, ${cy + 11})`}
+                  style={{ cursor: "pointer" }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    deleteMeasure(sectionId, anchor.measureId)
+                  }}
+                >
+                  <rect
+                    x={-9}
+                    y={-9}
+                    width={18}
+                    height={18}
+                    rx={3}
+                    fill="hsl(var(--background))"
+                    stroke="currentColor"
+                    strokeOpacity={0.35}
+                    strokeWidth={1}
+                  />
+                  <line x1={-5} y1={0} x2={5} y2={0} stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+                  <title>Remove last bar from this section</title>
+                </g>
+              )}
             </g>
           )
         })}
@@ -252,6 +305,11 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
           fontFamily={`${fc.body}, sans-serif`}
           fill={fc.bodyColor ?? "currentColor"}
           opacity={0.55}
+          style={{ cursor: "pointer" }}
+          onClick={(e) => {
+            e.stopPropagation()
+            setFocusField("copyright")
+          }}
         >
           {meta.copyright}
         </text>
@@ -272,6 +330,11 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
           fill={fc.bodyColor ?? "currentColor"}
           opacity={0.55}
           fontStyle="italic"
+          style={{ cursor: "pointer" }}
+          onClick={(e) => {
+            e.stopPropagation()
+            setFocusField("footerText")
+          }}
         >
           {meta.footerText}
         </text>
