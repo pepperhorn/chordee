@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import { TimePanel } from "./TimePanel"
 import { useChartStore } from "@/lib/store"
 import { FONT_FAMILIES, NOTATION_FONT_FAMILIES, RELATIVE_SIZES, type RelativeSize } from "@/lib/fonts"
 import { buildUserStyle, parseUserStyle } from "@/lib/userStyle"
@@ -276,7 +277,7 @@ export function PropertiesPanel() {
               </div>
 
               <p className="text-[10px] text-muted-foreground italic">
-                Time signature is per-section — set it in the Selection tab.
+                Time signature is per-bar — select a bar and set it in the Tools tab.
               </p>
 
               <Separator className="meta-info-sep" />
@@ -748,28 +749,38 @@ export function SelectionProperties({
             />
           </div>
 
-          {/* Time Signature */}
-          <div className="field-group space-y-1">
-            <Label className="field-label text-xs">Time Signature</Label>
-            <Select
-              value={`${section.timeSignature.beats}/${section.timeSignature.beatUnit}`}
-              onValueChange={(v) => {
-                const [b, u] = v.split("/").map(Number)
-                setSectionTimeSignature(section.id, b, u as 2 | 4 | 8 | 16)
-              }}
-            >
-              <SelectTrigger className="field-select h-8 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TIME_SIGNATURES.map((ts) => (
-                  <SelectItem key={ts.label} value={ts.label}>
-                    {ts.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Time Signature — when a specific bar is selected, use the
+              bar-aware panel (change meter from that bar forward, or clear an
+              override). With only the section selected, fall back to the
+              section-wide picker. */}
+          {selection.measureId ? (
+            <div className="field-group space-y-1">
+              <Label className="field-label text-xs">Time Signature</Label>
+              <TimePanel />
+            </div>
+          ) : (
+            <div className="field-group space-y-1">
+              <Label className="field-label text-xs">Time Signature</Label>
+              <Select
+                value={`${section.timeSignature.beats}/${section.timeSignature.beatUnit}`}
+                onValueChange={(v) => {
+                  const [b, u] = v.split("/").map(Number)
+                  setSectionTimeSignature(section.id, b, u as 2 | 4 | 8 | 16)
+                }}
+              >
+                <SelectTrigger className="field-select h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIME_SIGNATURES.map((ts) => (
+                    <SelectItem key={ts.label} value={ts.label}>
+                      {ts.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Navigation */}
           <div className="field-group space-y-1">

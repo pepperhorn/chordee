@@ -270,23 +270,51 @@ function regroupRange(
 
 export const useChartStore = create<ChartState>()(
   subscribeWithSelector((set, get) => {
-    function saveHistory(description: string) {
-      const { chart, history, historyIndex } = get()
-      const newHistory = history.slice(0, historyIndex + 1)
-      newHistory.push({ chart: deepClone(chart), description })
-      if (newHistory.length > MAX_HISTORY) newHistory.shift()
-      set({ history: newHistory, historyIndex: newHistory.length - 1 })
+    // Commit `newChart` as the new current state. Invariant:
+    // history[historyIndex] always deep-equals the live chart, so redo has a
+    // post-mutation snapshot to return to. (The previous design saved the
+    // chart *before* each mutation and never stored the latest state, which
+    // silently broke redo: change → undo → redo landed back on the
+    // pre-change snapshot.)
+    function pushHistory(description: string, newChart: ChordChart) {
+      const { history, historyIndex } = get()
+      let newHistory = history.slice(0, historyIndex + 1)
+      newHistory.push({ chart: deepClone(newChart), description })
+      if (newHistory.length > MAX_HISTORY) {
+        newHistory = newHistory.slice(newHistory.length - MAX_HISTORY)
+      }
+      set({ chart: newChart, history: newHistory, historyIndex: newHistory.length - 1 })
     }
 
     function mutateChart(description: string, mutator: (chart: ChordChart) => void) {
-      saveHistory(description)
       const chart = deepClone(get().chart)
       mutator(chart)
       // After every mutation, sweep endings whose region was deleted,
       // unpaired, or had its repeatRegionId cleared. Cheap (one chart
       // walk) and means callers never have to think about orphans.
       pruneOrphanedVoltas(chart)
-      set({ chart })
+      pushHistory(description, chart)
+    }
+
+    // After an operation that rebars a section (replacing measure/beat IDs),
+    // point the selection at the first beat of the bar now sitting at
+    // `barIdx`, so selection-driven panels stay anchored instead of dangling.
+    function reanchorSelectionToBar(sectionId: string, barIdx: number) {
+      if (barIdx < 0) return
+      const section = findSection(get().chart, sectionId)
+      const measure = section?.measures[barIdx]
+      if (!section || !measure) return
+      set((s) => ({
+        ui: {
+          ...s.ui,
+          selection: {
+            type: "beat",
+            sectionId: section.id,
+            measureId: measure.id,
+            beatId: measure.beats[0]?.id,
+          },
+        },
+      }))
     }
 
     return {
@@ -318,14 +346,13 @@ export const useChartStore = create<ChartState>()(
         canFork: false,
         activeShare: null,
       },
-      history: [],
-      historyIndex: -1,
+      history: [{ chart: deepClone(SAMPLE_CHART), description: "Initial" }],
+      historyIndex: 0,
 
       // ── Chart mutations ──────────────────────────────────────
 
       setChart: (chart) => {
-        saveHistory("Set chart")
-        set({ chart: deepClone(chart) })
+        pushHistory("Set chart", deepClone(chart))
       },
 
       updateMeta: (meta) => {
@@ -361,6 +388,7 @@ export const useChartStore = create<ChartState>()(
       },
 
       setMeasureTimeSignature: (sectionId, measureId, beats, beatUnit) => {
+        let targetIdx = -1
         mutateChart("Change time signature", (chart) => {
           const section = findSection(chart, sectionId)
           if (!section) return
@@ -372,6 +400,7 @@ export const useChartStore = create<ChartState>()(
             section.timeSignature = { beats, beatUnit }
             regroupRange(section, 0, { beats, beatUnit })
             for (const m of section.measures) delete m.timeSignature
+            targetIdx = 0
             return
           }
 
@@ -381,10 +410,16 @@ export const useChartStore = create<ChartState>()(
           regroupRange(section, idx, { beats, beatUnit })
           const firstNew = section.measures[idx]
           if (firstNew) firstNew.timeSignature = { beats, beatUnit }
+          targetIdx = idx
         })
+        // Regrouping replaces the bar's measures/beats with fresh IDs, so the
+        // old selection is now dangling. Re-anchor to the first beat of the
+        // rebarred bar so the panel keeps showing the bar the user just edited.
+        reanchorSelectionToBar(sectionId, targetIdx)
       },
 
       clearMeasureTimeSignature: (sectionId, measureId) => {
+        let targetIdx = -1
         mutateChart("Clear time signature change", (chart) => {
           const section = findSection(chart, sectionId)
           if (!section) return
@@ -400,7 +435,10 @@ export const useChartStore = create<ChartState>()(
           regroupRange(section, idx, effective)
           // Override on this bar is no longer needed.
           delete section.measures[idx].timeSignature
+          targetIdx = idx
         })
+        // Re-anchor selection to the rebarred bar (see setMeasureTimeSignature).
+        reanchorSelectionToBar(sectionId, targetIdx)
       },
 
       deleteSection: (id) => {
@@ -633,10 +671,11 @@ export const useChartStore = create<ChartState>()(
 
       undo: () => {
         const { history, historyIndex } = get()
-        if (historyIndex < 0) return
+        if (historyIndex <= 0) return
+        const newIndex = historyIndex - 1
         set({
-          chart: deepClone(history[historyIndex].chart),
-          historyIndex: historyIndex - 1,
+          chart: deepClone(history[newIndex].chart),
+          historyIndex: newIndex,
         })
       },
 
@@ -650,7 +689,7 @@ export const useChartStore = create<ChartState>()(
         })
       },
 
-      canUndo: () => get().historyIndex >= 0,
+      canUndo: () => get().historyIndex > 0,
       canRedo: () => get().historyIndex < get().history.length - 1,
 
       // ── I/O ──────────────────────────────────────────────────
@@ -713,7 +752,6 @@ export const useChartStore = create<ChartState>()(
         }
 
         const chart = chartParse.data
-        saveHistory("Import chart")
         set((s) => {
           const next: Partial<EditorUIState> = {
             fontConfig: s.ui.fontConfig,
@@ -731,15 +769,13 @@ export const useChartStore = create<ChartState>()(
               next.bgColor = embeddedStyle.page.bgColor
             }
           }
-          return { chart, ui: { ...s.ui, ...next } }
+          return { ui: { ...s.ui, ...next } }
         })
+        // Loading a file is a discrete, undoable step; commit the parsed
+        // chart through the history stack so undo/redo stay consistent.
+        pushHistory("Import chart", chart)
         return true
       },
     }
   })
 )
-
-// TEMP DEBUG HOOK — remove after investigation
-if (typeof window !== "undefined") {
-  ;(window as unknown as { __chartStore: typeof useChartStore }).__chartStore = useChartStore
-}
