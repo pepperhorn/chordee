@@ -135,7 +135,7 @@ export function VoltaPicker({
             onClick={() => pickPreset(p)}
             className={`ending-preset-btn rounded px-2 py-1 text-left text-xs font-medium transition-colors ${
               active
-                ? "bg-primary text-primary-foreground"
+                ? "bg-brand text-brand-foreground"
                 : taken
                   ? "bg-muted/40 text-muted-foreground/60 line-through cursor-not-allowed"
                   : "bg-muted text-foreground hover:bg-muted/80"

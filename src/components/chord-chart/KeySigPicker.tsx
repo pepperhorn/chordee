@@ -46,7 +46,7 @@ export function KeySigPicker({ onClose, anchorX, anchorY }: KeySigPickerProps) {
             key={k.value}
             className={`key-sig-picker-btn rounded px-2 py-1 text-xs transition-colors ${
               currentKey === k.value
-                ? "bg-primary text-primary-foreground"
+                ? "bg-brand text-brand-foreground"
                 : "hover:bg-accent hover:text-accent-foreground"
             }`}
             onClick={() => handleSelect(k.value)}

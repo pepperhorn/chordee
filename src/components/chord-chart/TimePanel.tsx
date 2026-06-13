@@ -85,7 +85,7 @@ export function TimePanel() {
                 key={opt.label}
                 className={`time-sig-btn rounded border px-2 py-2 text-sm font-medium transition-colors ${
                   active
-                    ? "border-primary bg-primary text-primary-foreground"
+                    ? "border-brand bg-brand text-brand-foreground"
                     : "border-input bg-background hover:bg-accent hover:text-accent-foreground"
                 }`}
                 onClick={() => setMeasureTimeSignature(section.id, measure.id, opt.beats, opt.beatUnit)}
@@ -125,7 +125,7 @@ export function TimePanel() {
                   key={opt.value}
                   className={`time-display-btn rounded border px-2 py-2 text-xs font-medium transition-colors ${
                     active
-                      ? "border-primary bg-primary text-primary-foreground"
+                      ? "border-brand bg-brand text-brand-foreground"
                       : "border-input bg-background hover:bg-accent hover:text-accent-foreground"
                   }`}
                   onClick={() => updateSection(section.id, { showTimeSignature: opt.value })}

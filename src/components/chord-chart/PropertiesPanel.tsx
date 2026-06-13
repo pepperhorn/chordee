@@ -172,7 +172,7 @@ export function PropertiesPanel() {
                       key={value}
                       className={`tempo-divisor-btn flex-1 rounded-sm px-1 py-0.5 text-sm transition-colors ${
                         (meta.tempoDivisor ?? "quarter") === value
-                          ? "bg-primary text-primary-foreground"
+                          ? "bg-brand text-brand-foreground"
                           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                       }`}
                       onClick={() => updateMeta({ tempoDivisor: value })}
@@ -263,7 +263,7 @@ export function PropertiesPanel() {
                           key={value}
                           className={`clef-display-btn flex-1 rounded-sm px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
                             (meta.clefDisplay ?? "start") === value
-                              ? "bg-primary text-primary-foreground"
+                              ? "bg-brand text-brand-foreground"
                               : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                           }`}
                           onClick={() => updateMeta({ clefDisplay: value })}
@@ -433,7 +433,7 @@ export function PropertiesPanel() {
                       type="button"
                       className={`page-bg-btn rounded px-1.5 py-1 text-[11px] font-medium transition-colors ${
                         pageBgMode === mode
-                          ? "bg-primary text-primary-foreground"
+                          ? "bg-brand text-brand-foreground"
                           : "bg-muted text-muted-foreground hover:bg-muted/80"
                       }`}
                       onClick={() => setPageBgMode(mode)}
@@ -726,7 +726,7 @@ export function SelectionProperties({
                   key={p}
                   className={`section-preset-btn rounded px-1.5 py-0.5 text-[10px] transition-colors ${
                     section.name === p
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-brand text-brand-foreground"
                       : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   }`}
                   onClick={() => updateSection(section.id, { name: p })}
@@ -1034,7 +1034,7 @@ function SizeToggle({
             key={s.value}
             className={`size-toggle-btn flex-1 rounded-sm px-1 py-0.5 text-[10px] font-medium transition-colors ${
               value === s.value
-                ? "bg-primary text-primary-foreground"
+                ? "bg-brand text-brand-foreground"
                 : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             }`}
             onClick={() => onChange(s.value)}

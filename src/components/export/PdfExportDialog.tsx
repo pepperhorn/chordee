@@ -509,7 +509,7 @@ export function PdfExportDialog({ open, onOpenChange }: PdfExportDialogProps) {
                     key={o}
                     className={`orient-btn flex-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
                       orientation === o
-                        ? "bg-primary text-primary-foreground"
+                        ? "bg-brand text-brand-foreground"
                         : "bg-muted text-muted-foreground hover:bg-muted/80"
                     }`}
                     onClick={() => setOrientation(o)}
@@ -543,7 +543,7 @@ export function PdfExportDialog({ open, onOpenChange }: PdfExportDialogProps) {
                       key={String(v)}
                       className={`bpl-btn rounded px-2 py-1 text-xs font-medium transition-colors ${
                         isActive
-                          ? "bg-primary text-primary-foreground"
+                          ? "bg-brand text-brand-foreground"
                           : "bg-muted text-muted-foreground hover:bg-muted/80"
                       }`}
                       onClick={() => setBpl(v)}
@@ -563,7 +563,7 @@ export function PdfExportDialog({ open, onOpenChange }: PdfExportDialogProps) {
                     key={j}
                     className={`just-btn flex-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
                       justification === j
-                        ? "bg-primary text-primary-foreground"
+                        ? "bg-brand text-brand-foreground"
                         : "bg-muted text-muted-foreground hover:bg-muted/80"
                     }`}
                     onClick={() => setJustification(j)}
@@ -591,7 +591,7 @@ export function PdfExportDialog({ open, onOpenChange }: PdfExportDialogProps) {
                         onClick={() => setShareMode(v)}
                         className={`pdf-share-mode flex items-center gap-2 rounded px-2 py-1 text-xs font-medium transition-colors ${
                           isActive
-                            ? "bg-primary text-primary-foreground"
+                            ? "bg-brand text-brand-foreground"
                             : "bg-muted text-muted-foreground hover:bg-muted/80"
                         }`}
                       >

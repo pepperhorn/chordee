@@ -101,7 +101,7 @@ export function NewScoreDialog({ isOpen, onClose }: NewScoreDialogProps) {
             </span>
           </Button>
 
-          {error && <p className="new-score-error text-sm text-red-600">{error}</p>}
+          {error && <p className="new-score-error text-sm text-destructive">{error}</p>}
 
           <Button
             type="button"

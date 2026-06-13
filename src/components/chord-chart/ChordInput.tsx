@@ -193,7 +193,7 @@ export function ChordInput({ layout }: ChordInputProps) {
       <input
         ref={inputRef}
         data-chord-entry=""
-        className={`chord-input-field rounded border border-red-500 bg-white/80 px-1 outline-none caret-red-500 ${
+        className={`chord-input-field rounded border border-brand bg-white/80 px-1 outline-none caret-brand ${
           error ? "chord-input-field--error border-destructive text-destructive" : ""
         }`}
         style={{

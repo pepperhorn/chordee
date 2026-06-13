@@ -128,7 +128,7 @@ function MobilePlaybackGroup() {
           <button
             key={inst}
             className={`mobile-playback-btn min-h-[44px] rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-              instrument === inst ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+              instrument === inst ? "bg-brand text-brand-foreground" : "bg-muted text-muted-foreground"
             }`}
             onClick={() => setInstrument(inst)}
             aria-pressed={instrument === inst}
@@ -138,7 +138,7 @@ function MobilePlaybackGroup() {
         ))}
         <button
           className={`mobile-playback-btn min-h-[44px] rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-            useBass ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+            useBass ? "bg-brand text-brand-foreground" : "bg-muted text-muted-foreground"
           }`}
           onClick={() => setUseBass(!useBass)}
           aria-pressed={useBass}
@@ -482,9 +482,11 @@ export function Toolbar() {
           <div className="mobile-account flex items-center">
             <AccountButton />
           </div>
-          {/* Bars per line */}
-          <div className="mobile-bpl flex items-center gap-1 w-full pt-1 border-t mt-1">
-            <span className="text-[10px] text-muted-foreground shrink-0">Bars/Line:</span>
+          {/* Bars per line — label on its own line; buttons share the full
+              width (flex-1) so they shrink to fit instead of overflowing. */}
+          <div className="mobile-bpl w-full pt-1 border-t mt-1">
+            <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Bars / Line</span>
+            <div className="flex gap-1">
             {["auto", "1", "2", "3", "4", "5", "6", "8"].map((v) => {
               const isAuto = v === "auto"
               const isActive = isAuto
@@ -493,8 +495,8 @@ export function Toolbar() {
               return (
                 <button
                   key={v}
-                  className={`min-h-[44px] min-w-[44px] rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  className={`min-h-[44px] flex-1 min-w-0 rounded-md px-1 py-2 text-sm font-medium transition-colors ${
+                    isActive ? "bg-brand text-brand-foreground" : "bg-muted text-muted-foreground"
                   }`}
                   onClick={() => {
                     if (isAuto) {
@@ -512,6 +514,7 @@ export function Toolbar() {
                 </button>
               )
             })}
+            </div>
           </div>
         </div>
       )}
@@ -641,8 +644,8 @@ export function Toolbar() {
               <button
                 className={`btn-edit-mode btn-edit-mode--${ui.editMode} flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
                   ui.editMode === "chord"
-                    ? "bg-red-600 text-white hover:bg-red-700"
-                    : "border-2 border-red-600 bg-transparent text-white hover:bg-white/10"
+                    ? "bg-brand text-brand-foreground hover:bg-brand/90"
+                    : "border-2 border-brand bg-transparent text-white hover:bg-white/10"
                 }`}
                 onClick={toggleEditMode}
               >
@@ -879,7 +882,7 @@ export function Toolbar() {
         </div>
       )}
       {saveError && (
-        <div className="toolbar-save-error fixed bottom-4 right-4 z-50 rounded-md bg-red-600 px-3 py-2 text-sm text-white shadow-lg">
+        <div className="toolbar-save-error fixed bottom-4 right-4 z-50 rounded-md bg-destructive px-3 py-2 text-sm text-destructive-foreground shadow-lg">
           Save failed: {saveError}
         </div>
       )}

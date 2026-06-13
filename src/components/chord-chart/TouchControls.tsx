@@ -169,8 +169,8 @@ export function TouchControls({ compact = false }: TouchControlsProps) {
   const symbolSize = compact ? "text-sm" : "text-base"
   const modeBtnH = compact ? "py-1.5" : "min-h-[44px] py-2.5"
 
-  const btnClass = `touch-ctrl-btn flex items-center justify-center rounded-md bg-muted text-foreground ${textBase} font-medium active:bg-primary active:text-primary-foreground transition-colors`
-  const btnActiveClass = `touch-ctrl-btn flex items-center justify-center rounded-md bg-primary text-primary-foreground ${textBase} font-medium`
+  const btnClass = `touch-ctrl-btn flex items-center justify-center rounded-md bg-muted text-foreground ${textBase} font-medium active:bg-brand active:text-brand-foreground transition-colors`
+  const btnActiveClass = `touch-ctrl-btn flex items-center justify-center rounded-md bg-brand text-brand-foreground ${textBase} font-medium`
 
   return (
     <div className="touch-controls">
@@ -179,7 +179,7 @@ export function TouchControls({ compact = false }: TouchControlsProps) {
         <button
           className={`touch-ctrl-mode-btn flex-1 ${modeBtnH} text-sm font-semibold transition-colors ${
             editMode === "chord"
-              ? "bg-red-600 text-white"
+              ? "bg-brand text-brand-foreground"
               : "bg-muted text-muted-foreground hover:text-foreground"
           }`}
           onClick={() => { useChartStore.getState().setEditMode("chord") }}
@@ -189,7 +189,7 @@ export function TouchControls({ compact = false }: TouchControlsProps) {
         <button
           className={`touch-ctrl-mode-btn flex-1 ${modeBtnH} text-sm font-semibold transition-colors ${
             editMode === "rhythm"
-              ? "bg-red-600 text-white"
+              ? "bg-brand text-brand-foreground"
               : "bg-muted text-muted-foreground hover:text-foreground"
           }`}
           onClick={() => { useChartStore.getState().setEditMode("rhythm") }}
@@ -326,7 +326,7 @@ export function TouchControls({ compact = false }: TouchControlsProps) {
 
           {/* Extensions */}
           <div className={`touch-ctrl-section-label px-1 ${compact ? "text-[8px]" : "text-[9px]"} font-semibold uppercase tracking-wider text-muted-foreground`}>
-            Ext {chordExts.length > 0 && <span className="text-primary">{chordExts.join(" ")}</span>}
+            Ext {chordExts.length > 0 && <span className="text-brand">{chordExts.join(" ")}</span>}
           </div>
           <div className={`touch-ctrl-row grid ${compact ? "grid-cols-4" : "grid-cols-6"} gap-1`}>
             {EXT_CYCLES.map((cycle) => {

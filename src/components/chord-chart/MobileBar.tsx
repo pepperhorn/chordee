@@ -121,10 +121,12 @@ export function MobileBar({ layout }: MobileBarProps) {
         </button>
       </div>
 
-      {/* Scrollable Tools area — Selection properties (including
-          delete-bar) stacked above the TouchControls keyboard. Caps at
-          ~55vh so the keyboard stays above the fold. */}
-      <div className="mobile-kb-tools max-h-[55vh] overflow-y-auto">
+      {/* Scrollable Tools area — Selection properties (including delete-bar)
+          stacked above the TouchControls keyboard. Capped like an on-screen
+          keyboard (~1/3 of the viewport) so the chart stays visible; content
+          scrolls within. The nav row above adds ~6vh, keeping the whole sheet
+          near a third of the screen. */}
+      <div className="mobile-kb-tools max-h-[27vh] overflow-y-auto overscroll-contain">
         {selection && (
           <div className="mobile-kb-selection border-b px-3 py-2">
             <SelectionProperties

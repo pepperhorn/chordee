@@ -104,14 +104,16 @@ export function getFieldValue<T = unknown>(item: LibraryItem, fieldId: string, f
 
 // Cover gradients — deterministic per-title so the same chart always gets
 // the same cover regardless of where it's listed.
+// Monochrome charcoal covers — subtle per-title variety, no color, so the
+// only color in the UI stays the logo red. White initial reads on all of them.
 const COVER_GRADIENTS = [
-  "linear-gradient(135deg, #ef4444, #f97316)",
-  "linear-gradient(135deg, #f59e0b, #eab308)",
-  "linear-gradient(135deg, #84cc16, #22c55e)",
-  "linear-gradient(135deg, #14b8a6, #06b6d4)",
-  "linear-gradient(135deg, #3b82f6, #6366f1)",
-  "linear-gradient(135deg, #8b5cf6, #d946ef)",
-  "linear-gradient(135deg, #ec4899, #f43f5e)",
+  "linear-gradient(135deg, #3a3a3a, #0f0f0f)",
+  "linear-gradient(135deg, #2b2b2b, #050505)",
+  "linear-gradient(150deg, #474747, #1a1a1a)",
+  "linear-gradient(120deg, #333333, #111111)",
+  "linear-gradient(135deg, #1f1f1f, #000000)",
+  "linear-gradient(160deg, #4a4a4a, #222222)",
+  "linear-gradient(135deg, #2e2e2e, #0a0a0a)",
 ]
 
 export function gradientFor(seed: string): string {
