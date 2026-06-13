@@ -46,7 +46,7 @@ interface PdfExportDialogProps {
 
 type BplOption = "auto" | number
 
-const BPL_CHOICES: BplOption[] = ["auto", 1, 2, 3, 4, 5, 6, 8]
+const BPL_CHOICES: BplOption[] = ["auto", 1, 2, 3, 4, 5, 6]
 
 // A4 is always the default; users can switch to Letter/Legal in the picker.
 function detectDefaultPaper(): PaperSize {

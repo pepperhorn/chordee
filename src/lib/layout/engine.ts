@@ -69,20 +69,27 @@ function measureStrings(
 
 // ── Step 3: Compute beat width ─────────────────────────────────────────
 
+// Tightest a beat can get before its CONTENT (chord text / lyric) would
+// collide. Below this, line-breaking must not pack another bar onto the line.
+// Empty beats (slash-only) can be far tighter than the comfortable display
+// width, which is what lets more bars share a line when the chords are short.
+const MIN_CONTENT_BEAT_WIDTH = 16
+
 function computeBeatWidth(
   beat: Beat,
   chordWidths: Map<string, number>,
   lyricWidths: Map<string, number>,
   config: LayoutConfig
-): number {
+): { natural: number; min: number } {
   const { beatPaddingX } = config.spacing
   const multiplier = DIVISION_MULTIPLIERS[beat.division] ?? 1.0
-  const minWidth = MIN_BEAT_WIDTH * multiplier
+  const comfortable = MIN_BEAT_WIDTH * multiplier
 
   // Sum the width needed for all slots — each slot needs space for whatever
   // text is rendered in the chord row. In "nashville" mode the chord row is
   // replaced by the Nashville number; in other modes it's the chord symbol.
-  let totalChordWidth = 0
+  let naturalChordWidth = 0
+  let minChordWidth = 0
   for (const slot of beat.slots) {
     let text = ""
     if (config.notationDisplay === "nashville") {
@@ -96,8 +103,10 @@ function computeBeatWidth(
       else if (slot.nashvilleChord) text = formatNashville(slot.nashvilleChord)
     }
     const w = chordWidths.get(text) ?? 0
-    // Each slot needs at least its chord width + padding between slots
-    totalChordWidth += Math.max(w + beatPaddingX, minWidth / beat.slots.length)
+    // Comfortable: at least the slash-friendly minimum. Min: just enough that
+    // the chord text doesn't touch (or a tight floor for empty/slash beats).
+    naturalChordWidth += Math.max(w + beatPaddingX, comfortable / beat.slots.length)
+    minChordWidth += w > 0 ? w + beatPaddingX : MIN_CONTENT_BEAT_WIDTH
   }
 
   let lyricWidth = 0
@@ -105,11 +114,18 @@ function computeBeatWidth(
     lyricWidth = lyricWidths.get(beat.lyrics) ?? 0
   }
 
-  return Math.max(
-    totalChordWidth + beatPaddingX,
-    lyricWidth + beatPaddingX * 2,
-    minWidth
-  )
+  return {
+    natural: Math.max(
+      naturalChordWidth + beatPaddingX,
+      lyricWidth + beatPaddingX * 2,
+      comfortable
+    ),
+    min: Math.max(
+      minChordWidth,
+      lyricWidth + beatPaddingX,
+      MIN_CONTENT_BEAT_WIDTH
+    ),
+  }
 }
 
 // ── Step 4: Compute bar width ──────────────────────────────────────────
@@ -121,6 +137,8 @@ interface BarInfo {
   measure: Measure
   beatWidths: number[]
   naturalWidth: number
+  /** Tightest width before chord text / lyrics collide — used for line breaking. */
+  minWidth: number
 }
 
 function computeBarWidths(
@@ -134,12 +152,15 @@ function computeBarWidths(
 
   for (const section of chart.sections) {
     for (const measure of section.measures) {
-      const beatWidths = measure.beats.map((beat) =>
+      const beats = measure.beats.map((beat) =>
         computeBeatWidth(beat, chordWidths, lyricWidths, config)
       )
+      const beatWidths = beats.map((b) => b.natural)
       const totalBeatWidth = beatWidths.reduce((sum, w) => sum + w, 0)
+      const totalMinBeat = beats.reduce((sum, b) => sum + b.min, 0)
       const { start: startBarlineW, end: endBarlineW } = getMeasureBarlineWidths(measure)
       const naturalWidth = totalBeatWidth + startBarlineW + endBarlineW + barPaddingX * 2
+      const minWidth = totalMinBeat + startBarlineW + endBarlineW + barPaddingX
 
       bars.push({
         sectionId: section.id,
@@ -148,6 +169,7 @@ function computeBarWidths(
         measure,
         beatWidths,
         naturalWidth,
+        minWidth,
       })
     }
   }
@@ -172,26 +194,22 @@ function breakIntoLines(
   config: LayoutConfig
 ): BarInfo[][] {
   const { chartPaddingX, barGap, clefKeySigWidth } = config.spacing
-  const wideAvailable = config.containerWidth - chartPaddingX * 2
-  const narrowAvailable = config.containerWidth - chartPaddingX * 2 - clefKeySigWidth
+  // Clef-narrow available width: the conservative ceiling so every line in a
+  // section is uniform regardless of which one shows the clef/key signature.
+  const available = config.containerWidth - chartPaddingX * 2 - clefKeySigWidth
 
-  if (config.measuresPerLine !== "auto") {
-    const mpl = config.measuresPerLine
-    const lines: BarInfo[][] = []
-    for (let i = 0; i < bars.length; i += mpl) {
-      lines.push(bars.slice(i, i + mpl))
-    }
-    return lines
-  }
-
-  // ── Auto: target TARGET_BPL bars/line, drop for busy sections ──────────
-  //
-  // Most chord charts aim for 4 bars per line. We honor that as a ceiling,
-  // then per-section check: does every consecutive 4-bar window fit within
-  // the (clef-narrow) available width? If not, try 3, then 2, then 1.
-  // This keeps the section uniform rather than ragged, and only pulls the
-  // count down when busier bars (wide chords, 16ths, lyrics) demand it.
+  // The requested bars/line acts as a CEILING, not an absolute. "auto" aims
+  // for 4; an explicit choice is honored up to MAX_BPL. We only pack as many
+  // bars as fit at their *minimum* (chord-text-tight) widths — so as long as
+  // the chord labels themselves don't collide, more bars share a line, and
+  // justification then stretches them out to fill the row. We only drop the
+  // count when the text would actually overlap.
   const TARGET_BPL = 4
+  const MAX_BPL = 6
+  const ceiling =
+    config.measuresPerLine === "auto"
+      ? TARGET_BPL
+      : Math.min(config.measuresPerLine, MAX_BPL)
 
   const groupWidth = (
     sectionBars: BarInfo[],
@@ -200,7 +218,7 @@ function breakIntoLines(
   ): number => {
     let w = 0
     for (let i = 0; i < count; i++) {
-      w += sectionBars[start + i]!.naturalWidth
+      w += sectionBars[start + i]!.minWidth
     }
     return w + Math.max(0, count - 1) * barGap
   }
@@ -216,13 +234,9 @@ function breakIntoLines(
     const sectionBars = bars.slice(sectionStart, sectionEnd)
     const n = sectionBars.length
 
-    // Use the clef-narrow available width as the conservative ceiling so
-    // every line in the section is uniform regardless of which shows the clef.
-    const available = narrowAvailable
-
-    // Pick the largest bpl <= TARGET_BPL where every k-window fits.
-    // (Trailing partial group is by definition <= chosen, so it always fits.)
-    let chosen = Math.min(TARGET_BPL, n)
+    // Pick the largest bpl <= ceiling where every k-window fits at natural
+    // width. (Trailing partial group is <= chosen, so it always fits.)
+    let chosen = Math.max(1, Math.min(ceiling, n))
     while (chosen > 1) {
       let allFit = true
       for (let i = 0; i + chosen <= n; i++) {

@@ -487,7 +487,7 @@ export function Toolbar() {
           <div className="mobile-bpl w-full pt-1 border-t mt-1">
             <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Bars / Line</span>
             <div className="flex gap-1">
-            {["auto", "1", "2", "3", "4", "5", "6", "8"].map((v) => {
+            {["auto", "1", "2", "3", "4", "5", "6"].map((v) => {
               const isAuto = v === "auto"
               const isActive = isAuto
                 ? ui.measuresPerLineMode === "auto"

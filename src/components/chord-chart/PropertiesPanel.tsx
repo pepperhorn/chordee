@@ -496,9 +496,9 @@ export function PropertiesPanel() {
                       className="field-input h-8 text-sm"
                       type="number"
                       min={1}
-                      max={8}
+                      max={6}
                       value={meta.measuresPerLine}
-                      onChange={(e) => updateMeta({ measuresPerLine: parseInt(e.target.value) || 4 })}
+                      onChange={(e) => updateMeta({ measuresPerLine: Math.min(6, Math.max(1, parseInt(e.target.value) || 4)) })}
                     />
                   </div>
                 )}
