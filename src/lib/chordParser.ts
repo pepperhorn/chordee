@@ -72,6 +72,37 @@ function parseQualityWithExtensions(
   return null
 }
 
+export interface BassOnlyResult {
+  valid: boolean
+  /** New bass note, when set */
+  bass?: string
+  /** True when the input was a bare "/" — meaning clear any existing bass */
+  clear?: boolean
+  error?: string
+}
+
+/**
+ * Parse a bass-only modifier like "/Bb" or "/F#". A bare "/" clears the bass.
+ * Returns valid:false (with no error) when the input is not slash-prefixed,
+ * so callers can fall through to normal chord parsing.
+ */
+export function parseBassOnly(input: string): BassOnlyResult {
+  const trimmed = input.trim()
+  if (!trimmed.startsWith("/")) return { valid: false }
+
+  const bassCandidate = trimmed.slice(1).trim()
+  if (!bassCandidate) {
+    // "/" alone removes the existing bass note
+    return { valid: true, clear: true }
+  }
+
+  const bassRoot = parseRootFromStart(bassCandidate)
+  if (bassRoot && bassRoot.rest.length === 0) {
+    return { valid: true, bass: bassRoot.root }
+  }
+  return { valid: false, error: `Invalid bass note: "${bassCandidate}"` }
+}
+
 function parseStandardChord(input: string): ParseResult {
   const trimmed = input.trim()
   if (!trimmed) return { valid: false, error: "Empty input" }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useChartStore } from "@/lib/store"
-import { parseChord } from "@/lib/chordParser"
+import { parseChord, parseBassOnly } from "@/lib/chordParser"
 import { formatChord } from "@/lib/utils"
 import { useEffectiveScale } from "@/lib/fontConfigContext"
 import type { LayoutResult } from "@/lib/layout/types"
@@ -110,6 +110,37 @@ export function ChordInput({ layout }: ChordInputProps) {
       if (isNashville) {
         setSlotNashville(selection.sectionId, selection.measureId, selection.beatId, selection.slotId, null)
       }
+      setError("")
+      return
+    }
+
+    // Bass-only entry ("/Bb", "/F#", or bare "/" to clear): keep the existing
+    // chord and only move the bass note — no need to restate the chord.
+    if (!isNashville && value.trim().startsWith("/")) {
+      const chart = useChartStore.getState().chart
+      const section = chart.sections.find((s) => s.id === selection.sectionId)
+      const measure = section?.measures.find((m) => m.id === selection.measureId)
+      const beat = measure?.beats.find((b) => b.id === selection.beatId)
+      const slot = beat?.slots.find((s) => s.id === selection.slotId)
+
+      if (!slot?.chord) {
+        setError("No chord to add a bass note to")
+        return
+      }
+
+      const bassResult = parseBassOnly(value)
+      if (!bassResult.valid) {
+        setError(bassResult.error || "Invalid bass note")
+        return
+      }
+
+      setSlotChord(
+        selection.sectionId,
+        selection.measureId,
+        selection.beatId,
+        selection.slotId,
+        { ...slot.chord, bass: bassResult.clear ? undefined : bassResult.bass }
+      )
       setError("")
       return
     }
