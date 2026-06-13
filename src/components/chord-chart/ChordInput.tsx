@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useChartStore } from "@/lib/store"
 import { resolveChordEntry } from "@/lib/chordParser"
-import { formatChord } from "@/lib/utils"
+import { formatChord, findEffectiveChord } from "@/lib/utils"
 import { useEffectiveScale } from "@/lib/fontConfigContext"
 import type { LayoutResult } from "@/lib/layout/types"
 
@@ -107,13 +107,10 @@ export function ChordInput({ layout }: ChordInputProps) {
 
     const { sectionId, measureId, beatId, slotId } = selection
 
-    // Look up the slot's current chord so bass-only entry ("/Bb") can merge.
+    // Effective chord = this slot's chord, or the nearest preceding one, so
+    // bass-only entry ("/Bb") can move the bass without restating the chord.
     const chart = useChartStore.getState().chart
-    const currentChord = chart.sections
-      .find((s) => s.id === sectionId)
-      ?.measures.find((m) => m.id === measureId)
-      ?.beats.find((b) => b.id === beatId)
-      ?.slots.find((s) => s.id === slotId)?.chord
+    const currentChord = findEffectiveChord(chart, slotId)
 
     const res = resolveChordEntry(value, currentChord, isNashville)
     switch (res.kind) {

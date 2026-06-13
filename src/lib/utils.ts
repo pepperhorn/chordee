@@ -124,6 +124,32 @@ export function getQualitySymbol(quality: string): string {
   return QUALITY_SYMBOLS[quality] ?? quality
 }
 
+/**
+ * Find the chord in effect at a given slot: the slot's own chord, or — if it
+ * has none — the nearest chord on an earlier slot (document order). This lets
+ * bass-only entry ("/Bb") move the bass of the current chord without having to
+ * restate it on every beat. Slot ids are globally unique, so a single ordered
+ * scan suffices. Returns null if nothing precedes the slot.
+ */
+export function findEffectiveChord(
+  chart: ChordChart,
+  slotId: string | undefined | null
+): Chord | null {
+  if (!slotId) return null
+  let lastChord: Chord | null = null
+  for (const section of chart.sections) {
+    for (const measure of section.measures) {
+      for (const beat of measure.beats) {
+        for (const slot of beat.slots) {
+          if (slot.chord) lastChord = slot.chord
+          if (slot.id === slotId) return lastChord
+        }
+      }
+    }
+  }
+  return lastChord
+}
+
 export function formatTimeSignature(ts: TimeSignature): string {
   return `${ts.beats}/${ts.beatUnit}`
 }

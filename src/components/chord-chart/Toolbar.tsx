@@ -45,7 +45,7 @@ import { useChartStore } from "@/lib/store"
 import { downloadFile, uploadFile } from "@/lib/io"
 import { exportToMarkdown } from "@/lib/io"
 import { resolveChordEntry } from "@/lib/chordParser"
-import { formatChord } from "@/lib/utils"
+import { formatChord, findEffectiveChord } from "@/lib/utils"
 import { usePlaybackStore } from "@/lib/plugins/playback/playback-store"
 import { PdfExportDialog } from "@/components/export/PdfExportDialog"
 import { PdfIcon } from "@/components/icons/PdfIcon"
@@ -252,12 +252,9 @@ export function Toolbar() {
     const isNashville = chart.meta.notationDisplay === "nashville"
     const { sectionId, measureId, beatId, slotId } = selection
 
-    // Current chord lets bass-only entry ("/Bb") move the bass without restating the chord.
-    const currentChord = chart.sections
-      .find((s) => s.id === sectionId)
-      ?.measures.find((m) => m.id === measureId)
-      ?.beats.find((b) => b.id === beatId)
-      ?.slots.find((s) => s.id === slotId)?.chord
+    // Effective chord = this slot's chord, or the nearest preceding one, so
+    // bass-only entry ("/Bb") can move the bass without restating the chord.
+    const currentChord = findEffectiveChord(chart, slotId)
 
     const res = resolveChordEntry(chordValue, currentChord, isNashville)
     switch (res.kind) {
