@@ -1,6 +1,17 @@
 import { CHORD_ALIASES, CHORD_QUALITIES, CHORD_ROOTS, NASHVILLE_NUMBERS } from "./constants"
 import type { Chord, NashvilleChord } from "./schema"
 
+/**
+ * Outcome of resolving a raw chord-entry string against the slot's current
+ * chord. Shared by every chord-entry surface (inline input, toolbar field) so
+ * bass-only "/Bb" handling stays consistent across them.
+ */
+export type ChordEntryResolution =
+  | { kind: "invalid"; error: string }
+  | { kind: "clear" }
+  | { kind: "chord"; chord: Chord }
+  | { kind: "nashville"; nashvilleChord: NashvilleChord }
+
 export interface ParseResult {
   valid: boolean
   chord?: Chord
@@ -188,4 +199,48 @@ export function parseChord(
     return parseNashvilleChord(input)
   }
   return parseStandardChord(input)
+}
+
+/**
+ * Resolve a raw chord-entry string against the slot's current chord.
+ * Centralizes the rules every text-entry surface needs:
+ *   - empty            → clear the slot
+ *   - "/Bb", "/F#"     → keep the current chord, move only the bass note
+ *   - "/" (bare)       → keep the current chord, remove its bass note
+ *   - otherwise        → parse as a full chord / Nashville number
+ * Bass-only entry applies to standard notation only (Nashville has no bass).
+ */
+export function resolveChordEntry(
+  rawValue: string,
+  currentChord: Chord | null | undefined,
+  isNashville: boolean
+): ChordEntryResolution {
+  const trimmed = rawValue.trim()
+  if (!trimmed) return { kind: "clear" }
+
+  if (!isNashville && trimmed.startsWith("/")) {
+    if (!currentChord) {
+      return { kind: "invalid", error: "No chord to add a bass note to" }
+    }
+    const bassResult = parseBassOnly(trimmed)
+    if (!bassResult.valid) {
+      return { kind: "invalid", error: bassResult.error || "Invalid bass note" }
+    }
+    return {
+      kind: "chord",
+      chord: { ...currentChord, bass: bassResult.clear ? undefined : bassResult.bass },
+    }
+  }
+
+  const result = parseChord(trimmed, isNashville)
+  if (!result.valid) {
+    return { kind: "invalid", error: result.error || "Invalid chord" }
+  }
+  if (isNashville && result.nashvilleChord) {
+    return { kind: "nashville", nashvilleChord: result.nashvilleChord }
+  }
+  if (result.chord) {
+    return { kind: "chord", chord: result.chord }
+  }
+  return { kind: "invalid", error: "Invalid chord" }
 }

@@ -44,7 +44,7 @@ import { Input } from "@/components/ui/input"
 import { useChartStore } from "@/lib/store"
 import { downloadFile, uploadFile } from "@/lib/io"
 import { exportToMarkdown } from "@/lib/io"
-import { parseChord } from "@/lib/chordParser"
+import { resolveChordEntry } from "@/lib/chordParser"
 import { formatChord } from "@/lib/utils"
 import { usePlaybackStore } from "@/lib/plugins/playback/playback-store"
 import { PdfExportDialog } from "@/components/export/PdfExportDialog"
@@ -250,21 +250,30 @@ export function Toolbar() {
     if (!selection?.slotId || !selection.sectionId || !selection.measureId || !selection.beatId) return
     // Nashville-only display means the user is typing scale degrees (e.g. "4m7").
     const isNashville = chart.meta.notationDisplay === "nashville"
+    const { sectionId, measureId, beatId, slotId } = selection
 
-    if (!chordValue.trim()) {
-      setSlotChord(selection.sectionId, selection.measureId, selection.beatId, selection.slotId, null)
-      return
+    // Current chord lets bass-only entry ("/Bb") move the bass without restating the chord.
+    const currentChord = chart.sections
+      .find((s) => s.id === sectionId)
+      ?.measures.find((m) => m.id === measureId)
+      ?.beats.find((b) => b.id === beatId)
+      ?.slots.find((s) => s.id === slotId)?.chord
+
+    const res = resolveChordEntry(chordValue, currentChord, isNashville)
+    switch (res.kind) {
+      case "invalid":
+        return
+      case "clear":
+        setSlotChord(sectionId, measureId, beatId, slotId, null)
+        return
+      case "chord":
+        setSlotChord(sectionId, measureId, beatId, slotId, res.chord)
+        return
+      case "nashville":
+        setSlotNashville(sectionId, measureId, beatId, slotId, res.nashvilleChord)
+        return
     }
-
-    const result = parseChord(chordValue, isNashville)
-    if (!result.valid) return
-
-    if (isNashville && result.nashvilleChord) {
-      setSlotNashville(selection.sectionId, selection.measureId, selection.beatId, selection.slotId, result.nashvilleChord)
-    } else if (result.chord) {
-      setSlotChord(selection.sectionId, selection.measureId, selection.beatId, selection.slotId, result.chord)
-    }
-  }, [selection, chordValue, chart.meta.notationDisplay, setSlotChord, setSlotNashville])
+  }, [selection, chordValue, chart, setSlotChord, setSlotNashville])
 
   const handleExportJSON = () => {
     const json = exportJSON()

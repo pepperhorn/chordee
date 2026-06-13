@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useChartStore } from "@/lib/store"
-import { parseChord, parseBassOnly } from "@/lib/chordParser"
+import { resolveChordEntry } from "@/lib/chordParser"
 import { formatChord } from "@/lib/utils"
 import { useEffectiveScale } from "@/lib/fontConfigContext"
 import type { LayoutResult } from "@/lib/layout/types"
@@ -105,74 +105,34 @@ export function ChordInput({ layout }: ChordInputProps) {
   const handleSubmit = useCallback(() => {
     if (!selection?.slotId || !selection.sectionId || !selection.measureId || !selection.beatId) return
 
-    if (!value.trim()) {
-      setSlotChord(selection.sectionId, selection.measureId, selection.beatId, selection.slotId, null)
-      if (isNashville) {
-        setSlotNashville(selection.sectionId, selection.measureId, selection.beatId, selection.slotId, null)
-      }
-      setError("")
-      return
-    }
+    const { sectionId, measureId, beatId, slotId } = selection
 
-    // Bass-only entry ("/Bb", "/F#", or bare "/" to clear): keep the existing
-    // chord and only move the bass note — no need to restate the chord.
-    if (!isNashville && value.trim().startsWith("/")) {
-      const chart = useChartStore.getState().chart
-      const section = chart.sections.find((s) => s.id === selection.sectionId)
-      const measure = section?.measures.find((m) => m.id === selection.measureId)
-      const beat = measure?.beats.find((b) => b.id === selection.beatId)
-      const slot = beat?.slots.find((s) => s.id === selection.slotId)
+    // Look up the slot's current chord so bass-only entry ("/Bb") can merge.
+    const chart = useChartStore.getState().chart
+    const currentChord = chart.sections
+      .find((s) => s.id === sectionId)
+      ?.measures.find((m) => m.id === measureId)
+      ?.beats.find((b) => b.id === beatId)
+      ?.slots.find((s) => s.id === slotId)?.chord
 
-      if (!slot?.chord) {
-        setError("No chord to add a bass note to")
+    const res = resolveChordEntry(value, currentChord, isNashville)
+    switch (res.kind) {
+      case "invalid":
+        setError(res.error)
         return
-      }
-
-      const bassResult = parseBassOnly(value)
-      if (!bassResult.valid) {
-        setError(bassResult.error || "Invalid bass note")
-        return
-      }
-
-      setSlotChord(
-        selection.sectionId,
-        selection.measureId,
-        selection.beatId,
-        selection.slotId,
-        { ...slot.chord, bass: bassResult.clear ? undefined : bassResult.bass }
-      )
-      setError("")
-      return
+      case "clear":
+        setSlotChord(sectionId, measureId, beatId, slotId, null)
+        if (isNashville) setSlotNashville(sectionId, measureId, beatId, slotId, null)
+        break
+      case "chord":
+        setSlotChord(sectionId, measureId, beatId, slotId, res.chord)
+        if (isNashville) setSlotNashville(sectionId, measureId, beatId, slotId, null)
+        break
+      case "nashville":
+        setSlotNashville(sectionId, measureId, beatId, slotId, res.nashvilleChord)
+        setSlotChord(sectionId, measureId, beatId, slotId, null)
+        break
     }
-
-    const result = parseChord(value, isNashville)
-    if (!result.valid) {
-      setError(result.error || "Invalid chord")
-      return
-    }
-
-    if (isNashville && result.nashvilleChord) {
-      setSlotNashville(
-        selection.sectionId,
-        selection.measureId,
-        selection.beatId,
-        selection.slotId,
-        result.nashvilleChord
-      )
-      setSlotChord(selection.sectionId, selection.measureId, selection.beatId, selection.slotId, null)
-    } else if (result.chord) {
-      setSlotChord(
-        selection.sectionId,
-        selection.measureId,
-        selection.beatId,
-        selection.slotId,
-        result.chord
-      )
-      if (isNashville) {
-        setSlotNashville(selection.sectionId, selection.measureId, selection.beatId, selection.slotId, null)
-      }
-    }
-
     setError("")
   }, [selection, value, isNashville, setSlotChord, setSlotNashville])
 
