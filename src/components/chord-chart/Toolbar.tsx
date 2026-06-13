@@ -417,12 +417,68 @@ export function Toolbar() {
           <ToolbarButton icon={Music} label="Slashes" onClick={toggleShowSlashes} active={ui.showSlashes} className="btn-toggle-slashes" />
           <ToolbarButton icon={Type} label="Dynamics" onClick={toggleShowDynamics} active={ui.showDynamics} className="btn-toggle-dynamics" />
           <ToolbarButton icon={MessageSquare} label="Lyrics" onClick={toggleShowLyrics} active={ui.showLyrics} className="btn-toggle-lyrics" />
+          <ToolbarButton icon={Info} label="Instructions" onClick={toggleShowInstructions} active={ui.showInstructions} className="btn-toggle-instructions" />
           <ToolbarButton icon={ui.theme === "dark" ? Moon : Sun} label="Theme" onClick={handleThemeToggle} className="btn-theme-toggle" />
+
+          {/* Zoom */}
+          <div className="mobile-zoom flex items-center gap-0.5">
+            <ToolbarButton icon={ZoomOut} label="Zoom Out" onClick={() => setZoom(ui.zoom - 10)} className="btn-zoom-out" />
+            <span className="zoom-level min-w-[2.75rem] text-center text-[11px] text-muted-foreground">{ui.zoom}%</span>
+            <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={() => setZoom(ui.zoom + 10)} className="btn-zoom-in" />
+          </div>
+
+          {/* Paper texture + background color */}
+          <div className="mobile-texture relative flex items-center gap-1">
+            <div className="toolbar-texture-wrapper relative">
+              <select
+                className="toolbar-texture-select appearance-none bg-muted text-foreground text-xs font-medium rounded-md pl-7 pr-2 py-1.5 cursor-pointer outline-none border-none"
+                value={ui.paperTexture}
+                onChange={(e) => store.setPaperTexture(e.target.value as "none" | "subtle" | "crumpled")}
+                aria-label="Paper texture"
+              >
+                <option value="none">None</option>
+                <option value="subtle">Subtle</option>
+                <option value="crumpled">Crumpled</option>
+              </select>
+              <Image className="toolbar-texture-icon absolute left-1.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none" />
+            </div>
+            <label className="toolbar-bg-color relative flex items-center gap-1 cursor-pointer rounded-md px-1.5 py-1.5 bg-muted">
+              <Palette className="h-3.5 w-3.5" />
+              <div className="toolbar-bg-swatch h-4 w-4 rounded border border-foreground/30" style={{ backgroundColor: ui.bgColor }} />
+              <input type="color" className="sr-only" value={ui.bgColor} onChange={(e) => store.setBgColor(e.target.value)} aria-label="Background color" />
+            </label>
+          </div>
+
           <MobilePlaybackGroup />
+
+          {/* I/O */}
+          <ToolbarButton
+            icon={FilePlus}
+            label="New chart"
+            onClick={() => { setNewScoreOpen(true); setMobileMenuOpen(false) }}
+            className="btn-new-score font-bold"
+          />
+          <ToolbarButton
+            icon={savingCloud ? Cloud : Save}
+            label={savingCloud ? "Saving…" : "Save to account"}
+            onClick={handleCloudSave}
+            disabled={savingCloud || readOnly}
+            className="btn-cloud-save"
+          />
+          <ToolbarButton icon={LibraryIcon} label="Library" onClick={() => { setLibraryOpen(true); setMobileMenuOpen(false) }} className="btn-library" />
+          <ToolbarButton icon={Share2} label="Share" onClick={() => { setShareOpen(true); setMobileMenuOpen(false) }} disabled={readOnly && !canFork} className="btn-share" />
+          {canFork && (
+            <ToolbarButton icon={GitFork} label={forking ? "Forking…" : "Fork to my account"} onClick={handleFork} disabled={forking} className="btn-fork" />
+          )}
           <ToolbarButton icon={Upload} label="Import" onClick={handleImport} className="btn-import" />
           <ToolbarButton icon={Download} label="Export JSON" onClick={handleExportJSON} className="btn-export-json" />
           <ToolbarButton icon={FileText} label="Export MD" onClick={handleExportMarkdown} className="btn-export-markdown" />
           <ToolbarButton icon={PdfIcon} label="Export PDF" onClick={() => { setPdfDialogOpen(true); setMobileMenuOpen(false) }} className="btn-export-pdf" />
+
+          {/* Account / sign-in */}
+          <div className="mobile-account flex items-center">
+            <AccountButton />
+          </div>
           {/* Bars per line */}
           <div className="mobile-bpl flex items-center gap-1 w-full pt-1 border-t mt-1">
             <span className="text-[10px] text-muted-foreground shrink-0">Bars/Line:</span>
