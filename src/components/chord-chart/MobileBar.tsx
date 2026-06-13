@@ -91,11 +91,12 @@ export function MobileBar({ layout }: MobileBarProps) {
       {/* Nav + close row */}
       <div className="mobile-kb-nav flex items-center border-b px-2 py-1">
         <button
-          className="mobile-kb-nav-btn rounded p-1.5 text-foreground active:bg-muted disabled:opacity-30"
+          className="mobile-kb-nav-btn flex h-11 w-11 items-center justify-center rounded text-foreground active:bg-muted disabled:opacity-30"
           onClick={navLeft}
           disabled={currentIdx <= 0}
+          aria-label="Previous beat"
         >
-          <ChevronLeft className="h-5 w-5" />
+          <ChevronLeft className="h-6 w-6" />
         </button>
         <div className="mobile-kb-nav-info flex-1 text-center text-xs text-muted-foreground truncate px-1">
           {displayChordText
@@ -104,17 +105,19 @@ export function MobileBar({ layout }: MobileBarProps) {
           }
         </div>
         <button
-          className="mobile-kb-nav-btn rounded p-1.5 text-foreground active:bg-muted disabled:opacity-30"
+          className="mobile-kb-nav-btn flex h-11 w-11 items-center justify-center rounded text-foreground active:bg-muted disabled:opacity-30"
           onClick={navRight}
           disabled={currentIdx < 0 || currentIdx >= entries.length - 1}
+          aria-label="Next beat"
         >
-          <ChevronRight className="h-5 w-5" />
+          <ChevronRight className="h-6 w-6" />
         </button>
         <button
-          className="mobile-kb-close ml-1 rounded p-1.5 text-muted-foreground active:text-foreground"
+          className="mobile-kb-close ml-1 flex h-11 w-11 items-center justify-center rounded text-muted-foreground active:text-foreground"
           onClick={() => setExpanded(false)}
+          aria-label="Close tools"
         >
-          <ChevronDown className="h-5 w-5" />
+          <ChevronDown className="h-6 w-6" />
         </button>
       </div>
 

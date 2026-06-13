@@ -91,12 +91,13 @@ function ToolbarButton({
         <Button
           variant={active ? "secondary" : "ghost"}
           size="icon"
-          className={`toolbar-btn h-8 w-8 text-foreground md:text-white hover:bg-muted md:hover:bg-white/20 ${active ? "bg-muted md:bg-white/25" : ""} ${extraClass ?? ""}`}
+          className={`toolbar-btn h-11 w-11 md:h-8 md:w-8 text-foreground md:text-white hover:bg-muted md:hover:bg-white/20 ${active ? "bg-muted md:bg-white/25" : ""} ${extraClass ?? ""}`}
           onClick={onClick}
           disabled={disabled}
           aria-label={label}
+          aria-pressed={active}
         >
-          <Icon className="h-4 w-4" />
+          <Icon className="h-5 w-5 md:h-4 md:w-4" />
         </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="toolbar-tooltip">
@@ -122,23 +123,25 @@ function MobilePlaybackGroup() {
         active={listenMode}
         className="btn-listen-mobile"
       />
-      <div className="mobile-playback-options flex items-center gap-1 ml-1">
+      <div className="mobile-playback-options flex items-center gap-1.5 ml-1">
         {(["piano", "guitar"] as const).map((inst) => (
           <button
             key={inst}
-            className={`mobile-playback-btn rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+            className={`mobile-playback-btn min-h-[44px] rounded-md px-4 py-2 text-sm font-medium transition-colors ${
               instrument === inst ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
             }`}
             onClick={() => setInstrument(inst)}
+            aria-pressed={instrument === inst}
           >
             {inst === "piano" ? "Piano" : "Guitar"}
           </button>
         ))}
         <button
-          className={`mobile-playback-btn rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+          className={`mobile-playback-btn min-h-[44px] rounded-md px-4 py-2 text-sm font-medium transition-colors ${
             useBass ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
           }`}
           onClick={() => setUseBass(!useBass)}
+          aria-pressed={useBass}
         >
           Bass
         </button>
@@ -431,7 +434,7 @@ export function Toolbar() {
           <div className="mobile-texture relative flex items-center gap-1">
             <div className="toolbar-texture-wrapper relative">
               <select
-                className="toolbar-texture-select appearance-none bg-muted text-foreground text-xs font-medium rounded-md pl-7 pr-2 py-1.5 cursor-pointer outline-none border-none"
+                className="toolbar-texture-select min-h-[44px] appearance-none bg-muted text-foreground text-sm font-medium rounded-md pl-8 pr-3 cursor-pointer outline-none border-none"
                 value={ui.paperTexture}
                 onChange={(e) => store.setPaperTexture(e.target.value as "none" | "subtle" | "crumpled")}
                 aria-label="Paper texture"
@@ -442,9 +445,9 @@ export function Toolbar() {
               </select>
               <Image className="toolbar-texture-icon absolute left-1.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none" />
             </div>
-            <label className="toolbar-bg-color relative flex items-center gap-1 cursor-pointer rounded-md px-1.5 py-1.5 bg-muted">
-              <Palette className="h-3.5 w-3.5" />
-              <div className="toolbar-bg-swatch h-4 w-4 rounded border border-foreground/30" style={{ backgroundColor: ui.bgColor }} />
+            <label className="toolbar-bg-color relative flex min-h-[44px] items-center gap-1.5 cursor-pointer rounded-md px-3 bg-muted">
+              <Palette className="h-4 w-4" />
+              <div className="toolbar-bg-swatch h-5 w-5 rounded border border-foreground/30" style={{ backgroundColor: ui.bgColor }} />
               <input type="color" className="sr-only" value={ui.bgColor} onChange={(e) => store.setBgColor(e.target.value)} aria-label="Background color" />
             </label>
           </div>
@@ -490,7 +493,7 @@ export function Toolbar() {
               return (
                 <button
                   key={v}
-                  className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+                  className={`min-h-[44px] min-w-[44px] rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                     isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                   }`}
                   onClick={() => {
@@ -502,6 +505,8 @@ export function Toolbar() {
                     }
                     setMobileMenuOpen(false)
                   }}
+                  aria-label={isAuto ? "Bars per line: auto" : `Bars per line: ${v}`}
+                  aria-pressed={isActive}
                 >
                   {v === "auto" ? "Auto" : v}
                 </button>

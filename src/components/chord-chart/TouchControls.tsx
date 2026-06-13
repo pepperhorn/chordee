@@ -155,16 +155,19 @@ export function TouchControls({ compact = false }: TouchControlsProps) {
     showToast("Chord cleared", "info")
   }
 
-  // Sizing classes based on compact mode
-  const btnH = compact ? "h-7" : "h-9"
-  const btnHLg = compact ? "h-8" : "h-10"
-  const btnHSm = compact ? "h-6" : "h-8"
+  // Sizing classes based on compact mode. Non-compact is the mobile keyboard —
+  // its buttons are sized to the 44px minimum touch target (WCAG 2.5.5). Compact
+  // is the desktop sidebar (mouse), so it can stay dense.
+  const btnH = compact ? "h-7" : "h-11"
+  const btnHLg = compact ? "h-8" : "h-12"
+  const btnHSm = compact ? "h-6" : "h-11"
   const gap = compact ? "gap-1" : "gap-1.5"
   const pad = compact ? "p-1.5" : "p-2"
   const space = compact ? "space-y-1.5" : "space-y-2"
-  const textSm = compact ? "text-[9px]" : "text-[10px]"
-  const textBase = compact ? "text-xs" : "text-xs"
+  const textSm = compact ? "text-[9px]" : "text-xs"
+  const textBase = compact ? "text-xs" : "text-sm"
   const symbolSize = compact ? "text-sm" : "text-base"
+  const modeBtnH = compact ? "py-1.5" : "min-h-[44px] py-2.5"
 
   const btnClass = `touch-ctrl-btn flex items-center justify-center rounded-md bg-muted text-foreground ${textBase} font-medium active:bg-primary active:text-primary-foreground transition-colors`
   const btnActiveClass = `touch-ctrl-btn flex items-center justify-center rounded-md bg-primary text-primary-foreground ${textBase} font-medium`
@@ -174,7 +177,7 @@ export function TouchControls({ compact = false }: TouchControlsProps) {
       {/* Mode toggle */}
       <div className="touch-ctrl-mode flex border-b">
         <button
-          className={`touch-ctrl-mode-btn flex-1 py-1.5 text-xs font-semibold transition-colors ${
+          className={`touch-ctrl-mode-btn flex-1 ${modeBtnH} text-sm font-semibold transition-colors ${
             editMode === "chord"
               ? "bg-red-600 text-white"
               : "bg-muted text-muted-foreground hover:text-foreground"
@@ -184,7 +187,7 @@ export function TouchControls({ compact = false }: TouchControlsProps) {
           Chord
         </button>
         <button
-          className={`touch-ctrl-mode-btn flex-1 py-1.5 text-xs font-semibold transition-colors ${
+          className={`touch-ctrl-mode-btn flex-1 ${modeBtnH} text-sm font-semibold transition-colors ${
             editMode === "rhythm"
               ? "bg-red-600 text-white"
               : "bg-muted text-muted-foreground hover:text-foreground"
@@ -265,7 +268,7 @@ export function TouchControls({ compact = false }: TouchControlsProps) {
 
           {/* Root */}
           <div className={`touch-ctrl-section-label px-1 ${compact ? "text-[8px]" : "text-[9px]"} font-semibold uppercase tracking-wider text-muted-foreground`}>Root</div>
-          <div className={`touch-ctrl-row grid ${compact ? "grid-cols-5" : "grid-cols-10"} gap-1`}>
+          <div className={`touch-ctrl-row grid ${compact ? "grid-cols-5" : "grid-cols-7"} gap-1`}>
             {CHORD_ROOTS.map((r) => {
               const isBuilding = chordRoot === r
               const isCurrent = !chordRoot && currentSlot?.chord?.root?.startsWith(r)

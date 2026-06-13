@@ -11,7 +11,7 @@ export function AccountButton() {
 
   if (auth.isLoading) {
     return (
-      <Button variant="ghost" size="sm" disabled className="account-button-loading text-white/60">
+      <Button variant="ghost" size="sm" disabled className="account-button-loading min-h-[44px] md:min-h-0 text-foreground/60 md:text-white/60">
         <User className="h-4 w-4" />
       </Button>
     )
@@ -24,10 +24,10 @@ export function AccountButton() {
           variant="ghost"
           size="sm"
           onClick={() => setAuthOpen(true)}
-          className="account-button-signin gap-1.5 text-white hover:bg-white/10"
+          className="account-button-signin min-h-[44px] md:min-h-0 gap-1.5 text-foreground hover:bg-muted md:text-white md:hover:bg-white/10"
         >
           <LogIn className="h-4 w-4" />
-          <span className="text-xs">Sign in</span>
+          <span className="text-sm md:text-xs">Sign in</span>
         </Button>
         <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} auth={auth} />
       </>
@@ -41,7 +41,7 @@ export function AccountButton() {
       <button
         type="button"
         onClick={() => setMenuOpen((v) => !v)}
-        className="account-button-trigger flex h-7 w-7 items-center justify-center rounded-full bg-white/15 text-xs font-semibold text-white hover:bg-white/25"
+        className="account-button-trigger flex h-11 w-11 md:h-7 md:w-7 items-center justify-center rounded-full bg-muted md:bg-white/15 text-sm md:text-xs font-semibold text-foreground md:text-white hover:bg-muted/80 md:hover:bg-white/25"
         aria-label={`Signed in as ${auth.user?.email}`}
       >
         {initial}
