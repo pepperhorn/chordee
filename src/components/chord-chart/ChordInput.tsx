@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useChartStore } from "@/lib/store"
-import { resolveChordEntry } from "@/lib/chordParser"
-import { formatChord, findEffectiveChord } from "@/lib/utils"
+import { formatNashville } from "@/lib/nashville"
+import { formatChord } from "@/lib/utils"
 import { useEffectiveScale } from "@/lib/fontConfigContext"
 import type { LayoutResult } from "@/lib/layout/types"
 
@@ -13,8 +13,7 @@ interface ChordInputProps {
 
 export function ChordInput({ layout }: ChordInputProps) {
   const selection = useChartStore((s) => s.ui.selection)
-  const setSlotChord = useChartStore((s) => s.setSlotChord)
-  const setSlotNashville = useChartStore((s) => s.setSlotNashville)
+  const applyRawChordEntry = useChartStore((s) => s.applyRawChordEntry)
   const notationDisplay = useChartStore((s) => s.chart.meta.notationDisplay)
   const editMode = useChartStore((s) => s.ui.editMode)
   const setSelection = useChartStore((s) => s.setSelection)
@@ -89,7 +88,7 @@ export function ChordInput({ layout }: ChordInputProps) {
       if (slot?.chord) {
         setValue(formatChord(slot.chord))
       } else if (slot?.nashvilleChord) {
-        setValue(slot.nashvilleChord.degree + (slot.nashvilleChord.quality || ""))
+        setValue(formatNashville(slot.nashvilleChord))
       } else {
         setValue("")
       }
@@ -107,31 +106,20 @@ export function ChordInput({ layout }: ChordInputProps) {
 
     const { sectionId, measureId, beatId, slotId } = selection
 
-    // Effective chord = this slot's chord, or the nearest preceding one, so
-    // bass-only entry ("/Bb") can move the bass without restating the chord.
-    const chart = useChartStore.getState().chart
-    const currentChord = findEffectiveChord(chart, slotId)
-
-    const res = resolveChordEntry(value, currentChord, isNashville)
-    switch (res.kind) {
-      case "invalid":
-        setError(res.error)
-        return
-      case "clear":
-        setSlotChord(sectionId, measureId, beatId, slotId, null)
-        if (isNashville) setSlotNashville(sectionId, measureId, beatId, slotId, null)
-        break
-      case "chord":
-        setSlotChord(sectionId, measureId, beatId, slotId, res.chord)
-        if (isNashville) setSlotNashville(sectionId, measureId, beatId, slotId, null)
-        break
-      case "nashville":
-        setSlotNashville(sectionId, measureId, beatId, slotId, res.nashvilleChord)
-        setSlotChord(sectionId, measureId, beatId, slotId, null)
-        break
+    const result = applyRawChordEntry(
+      sectionId,
+      measureId,
+      beatId,
+      slotId,
+      value,
+      isNashville
+    )
+    if (result.kind === "invalid") {
+      setError(result.error)
+      return
     }
     setError("")
-  }, [selection, value, isNashville, setSlotChord, setSlotNashville])
+  }, [selection, value, isNashville, applyRawChordEntry])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

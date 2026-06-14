@@ -30,6 +30,11 @@ import {
 import { DIVISIONS } from "./constants"
 import { DEFAULT_FONT_CONFIG, type FontConfig } from "./fonts"
 import { SAMPLE_CHART } from "./sampleChart"
+import {
+  resolveChordEntry,
+  type ChordEntryResolution,
+} from "./chordParser"
+import { findEffectiveChord } from "./utils"
 
 // ── UI State ───────────────────────────────────────────────────────────
 
@@ -160,6 +165,14 @@ export interface ChartState {
   updateSlot: (sectionId: string, measureId: string, beatId: string, slotId: string, updates: Partial<BeatSlot>) => void
   setSlotChord: (sectionId: string, measureId: string, beatId: string, slotId: string, chord: Chord | null) => void
   setSlotNashville: (sectionId: string, measureId: string, beatId: string, slotId: string, nashvilleChord: NashvilleChord | null) => void
+  applyRawChordEntry: (
+    sectionId: string,
+    measureId: string,
+    beatId: string,
+    slotId: string,
+    rawValue: string,
+    isNashville: boolean
+  ) => ChordEntryResolution
 
   // Selection
   setSelection: (selection: Selection | null) => void
@@ -613,6 +626,57 @@ export const useChartStore = create<ChartState>()(
           const slot = findSlot(beat, slotId)
           if (slot) slot.nashvilleChord = nashvilleChord
         })
+      },
+
+      applyRawChordEntry: (
+        sectionId,
+        measureId,
+        beatId,
+        slotId,
+        rawValue,
+        isNashville
+      ) => {
+        const currentChart = get().chart
+        const section = findSection(currentChart, sectionId)
+        const measure = section && findMeasure(section, measureId)
+        const beat = measure && findBeat(measure, beatId)
+        const slot = beat && findSlot(beat, slotId)
+        if (!slot) {
+          return { kind: "invalid", error: "Chord slot not found" }
+        }
+
+        const resolution = resolveChordEntry(
+          rawValue,
+          findEffectiveChord(currentChart, slotId),
+          isNashville
+        )
+        if (resolution.kind === "invalid") return resolution
+
+        mutateChart(
+          resolution.kind === "clear" ? "Clear chord" : "Set chord",
+          (chart) => {
+            const targetSection = findSection(chart, sectionId)
+            const targetMeasure =
+              targetSection && findMeasure(targetSection, measureId)
+            const targetBeat =
+              targetMeasure && findBeat(targetMeasure, beatId)
+            const targetSlot = targetBeat && findSlot(targetBeat, slotId)
+            if (!targetSlot) return
+
+            targetSlot.noChord = false
+            if (resolution.kind === "clear") {
+              targetSlot.chord = null
+              targetSlot.nashvilleChord = null
+            } else if (resolution.kind === "chord") {
+              targetSlot.chord = resolution.chord
+              targetSlot.nashvilleChord = null
+            } else {
+              targetSlot.chord = null
+              targetSlot.nashvilleChord = resolution.nashvilleChord
+            }
+          }
+        )
+        return resolution
       },
 
       // ── Selection ────────────────────────────────────────────

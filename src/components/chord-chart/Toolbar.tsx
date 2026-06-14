@@ -44,8 +44,8 @@ import { Input } from "@/components/ui/input"
 import { useChartStore } from "@/lib/store"
 import { downloadFile, uploadFile } from "@/lib/io"
 import { exportToMarkdown } from "@/lib/io"
-import { resolveChordEntry } from "@/lib/chordParser"
-import { formatChord, findEffectiveChord } from "@/lib/utils"
+import { formatNashville } from "@/lib/nashville"
+import { formatChord } from "@/lib/utils"
 import { usePlaybackStore } from "@/lib/plugins/playback/playback-store"
 import { PdfExportDialog } from "@/components/export/PdfExportDialog"
 import { PdfIcon } from "@/components/icons/PdfIcon"
@@ -224,8 +224,7 @@ export function Toolbar() {
     exportJSON,
     importJSON,
     updateMeta,
-    setSlotChord,
-    setSlotNashville,
+    applyRawChordEntry,
     setSelection,
     toggleEditMode,
   } = store
@@ -245,7 +244,7 @@ export function Toolbar() {
     const bea = mea?.beats.find((b) => b.id === selection.beatId)
     const slo = bea?.slots.find((s) => s.id === selection.slotId)
     if (slo?.chord) return formatChord(slo.chord)
-    if (slo?.nashvilleChord) return slo.nashvilleChord.degree + (slo.nashvilleChord.quality || "")
+    if (slo?.nashvilleChord) return formatNashville(slo.nashvilleChord)
     return ""
   })()
 
@@ -255,25 +254,15 @@ export function Toolbar() {
     const isNashville = chart.meta.notationDisplay === "nashville"
     const { sectionId, measureId, beatId, slotId } = selection
 
-    // Effective chord = this slot's chord, or the nearest preceding one, so
-    // bass-only entry ("/Bb") can move the bass without restating the chord.
-    const currentChord = findEffectiveChord(chart, slotId)
-
-    const res = resolveChordEntry(chordValue, currentChord, isNashville)
-    switch (res.kind) {
-      case "invalid":
-        return
-      case "clear":
-        setSlotChord(sectionId, measureId, beatId, slotId, null)
-        return
-      case "chord":
-        setSlotChord(sectionId, measureId, beatId, slotId, res.chord)
-        return
-      case "nashville":
-        setSlotNashville(sectionId, measureId, beatId, slotId, res.nashvilleChord)
-        return
-    }
-  }, [selection, chordValue, chart, setSlotChord, setSlotNashville])
+    applyRawChordEntry(
+      sectionId,
+      measureId,
+      beatId,
+      slotId,
+      chordValue,
+      isNashville
+    )
+  }, [selection, chordValue, chart.meta.notationDisplay, applyRawChordEntry])
 
   const handleExportJSON = () => {
     const json = exportJSON()
