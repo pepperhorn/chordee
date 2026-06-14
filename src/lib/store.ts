@@ -209,6 +209,7 @@ export interface ChartState {
   setPluginEnabled: (id: string, enabled: boolean) => void
 
   // History
+  canEditDocument: () => boolean
   undo: () => void
   redo: () => void
   canUndo: () => boolean
@@ -283,6 +284,10 @@ function regroupRange(
 
 export const useChartStore = create<ChartState>()(
   subscribeWithSelector((set, get) => {
+    function canEditDocument() {
+      return !get().ui.readOnly
+    }
+
     // Commit `newChart` as the new current state. Invariant:
     // history[historyIndex] always deep-equals the live chart, so redo has a
     // post-mutation snapshot to return to. (The previous design saved the
@@ -299,7 +304,11 @@ export const useChartStore = create<ChartState>()(
       set({ chart: newChart, history: newHistory, historyIndex: newHistory.length - 1 })
     }
 
-    function mutateChart(description: string, mutator: (chart: ChordChart) => void) {
+    function mutateChart(
+      description: string,
+      mutator: (chart: ChordChart) => void
+    ): boolean {
+      if (!canEditDocument()) return false
       const chart = deepClone(get().chart)
       mutator(chart)
       // After every mutation, sweep endings whose region was deleted,
@@ -307,6 +316,7 @@ export const useChartStore = create<ChartState>()(
       // walk) and means callers never have to think about orphans.
       pruneOrphanedVoltas(chart)
       pushHistory(description, chart)
+      return true
     }
 
     // After an operation that rebars a section (replacing measure/beat IDs),
@@ -636,6 +646,10 @@ export const useChartStore = create<ChartState>()(
         rawValue,
         isNashville
       ) => {
+        if (!canEditDocument()) {
+          return { kind: "invalid", error: "Document is read-only" }
+        }
+
         const currentChart = get().chart
         const section = findSection(currentChart, sectionId)
         const measure = section && findMeasure(section, measureId)
@@ -733,7 +747,10 @@ export const useChartStore = create<ChartState>()(
 
       // ── History ──────────────────────────────────────────────
 
+      canEditDocument,
+
       undo: () => {
+        if (!canEditDocument()) return
         const { history, historyIndex } = get()
         if (historyIndex <= 0) return
         const newIndex = historyIndex - 1
@@ -744,6 +761,7 @@ export const useChartStore = create<ChartState>()(
       },
 
       redo: () => {
+        if (!canEditDocument()) return
         const { history, historyIndex } = get()
         if (historyIndex >= history.length - 1) return
         const newIndex = historyIndex + 1
@@ -753,8 +771,9 @@ export const useChartStore = create<ChartState>()(
         })
       },
 
-      canUndo: () => get().historyIndex > 0,
-      canRedo: () => get().historyIndex < get().history.length - 1,
+      canUndo: () => canEditDocument() && get().historyIndex > 0,
+      canRedo: () =>
+        canEditDocument() && get().historyIndex < get().history.length - 1,
 
       // ── I/O ──────────────────────────────────────────────────
 
@@ -775,6 +794,11 @@ export const useChartStore = create<ChartState>()(
       },
 
       importJSON: (json) => {
+        if (!canEditDocument()) {
+          get().showToast("This shared chart is read-only", "warning")
+          return false
+        }
+
         // Two failure modes worth distinguishing for the user:
         //   1. Malformed JSON         → "Couldn't read file (not valid JSON)"
         //   2. Wrong shape / Zod fail → "File isn't a valid chord chart"

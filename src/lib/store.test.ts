@@ -88,8 +88,15 @@ function apply(rawValue: string, isNashville = false) {
 
 beforeEach(() => {
   const chart = testChart()
+  const currentUi = useChartStore.getState().ui
   useChartStore.setState({
     chart,
+    ui: {
+      ...currentUi,
+      readOnly: false,
+      canFork: false,
+      activeShare: null,
+    },
     history: [{ chart: structuredClone(chart), description: "Initial" }],
     historyIndex: 0,
   })
@@ -184,5 +191,95 @@ describe("applyRawChordEntry", () => {
 
     expect(result).toEqual({ kind: "invalid", error: "Chord slot not found" })
     expect(useChartStore.getState().history.length).toBe(before)
+  })
+})
+
+describe("read-only document capability", () => {
+  function makeHistory() {
+    const initial = testChart()
+    const changed = structuredClone(initial)
+    changed.meta.title = "Changed"
+    useChartStore.setState({
+      chart: changed,
+      history: [
+        { chart: initial, description: "Initial" },
+        { chart: changed, description: "Changed title" },
+      ],
+      historyIndex: 1,
+    })
+  }
+
+  it("blocks chart mutations and atomic chord entry without adding history", () => {
+    const store = useChartStore.getState()
+    store.setShareState({
+      readOnly: true,
+      canFork: true,
+      activeShare: null,
+    })
+    const before = structuredClone(useChartStore.getState().chart)
+    const historyBefore = useChartStore.getState().history.length
+
+    store.updateMeta({ title: "Blocked" })
+    store.addSection("Blocked")
+    expect(apply("Dm7")).toEqual({
+      kind: "invalid",
+      error: "Document is read-only",
+    })
+
+    expect(useChartStore.getState().chart).toEqual(before)
+    expect(useChartStore.getState().history.length).toBe(historyBefore)
+    expect(useChartStore.getState().canEditDocument()).toBe(false)
+  })
+
+  it("blocks undo, redo, and import while read-only", () => {
+    makeHistory()
+    const store = useChartStore.getState()
+    store.setShareState({
+      readOnly: true,
+      canFork: false,
+      activeShare: null,
+    })
+
+    expect(store.canUndo()).toBe(false)
+    store.undo()
+    expect(useChartStore.getState().historyIndex).toBe(1)
+    expect(useChartStore.getState().chart.meta.title).toBe("Changed")
+
+    useChartStore.setState({ historyIndex: 0 })
+    expect(useChartStore.getState().canRedo()).toBe(false)
+    useChartStore.getState().redo()
+    expect(useChartStore.getState().historyIndex).toBe(0)
+
+    expect(useChartStore.getState().importJSON(JSON.stringify(testChart()))).toBe(
+      false
+    )
+    expect(useChartStore.getState().historyIndex).toBe(0)
+  })
+
+  it("allows trusted document replacement and local view settings", () => {
+    const store = useChartStore.getState()
+    store.setShareState({
+      readOnly: true,
+      canFork: true,
+      activeShare: null,
+    })
+    const replacement = testChart()
+    replacement.meta.title = "Resolved share"
+
+    store.setChart(replacement)
+    store.setZoom(125)
+    store.setSelection({
+      type: "slot",
+      sectionId: "section",
+      measureId: "measure",
+      beatId: "beat",
+      slotId: "target",
+    })
+
+    const state = useChartStore.getState()
+    expect(state.chart.meta.title).toBe("Resolved share")
+    expect(state.ui.zoom).toBe(125)
+    expect(state.ui.selection?.type).toBe("slot")
+    expect(state.ui.readOnly).toBe(true)
   })
 })
