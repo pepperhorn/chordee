@@ -7,6 +7,12 @@ export const ChordSchema = z.object({
   quality: z.string(),
   bass: z.string().optional(),
   extensions: z.array(z.string()).optional(),
+  /**
+   * When true, the chord is rendered as just its slash-bass ("/Bb") — the
+   * root/quality are carried over from the preceding chord for a bass-walk
+   * (e.g. Ebm7  /Bb  /Db) but kept on the object so playback stays correct.
+   */
+  bassOnly: z.boolean().optional(),
 })
 
 export const NashvilleChordSchema = z.object({

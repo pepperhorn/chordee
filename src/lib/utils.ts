@@ -114,6 +114,9 @@ export function createEmptyChart(): ChordChart {
 // ── Formatting ─────────────────────────────────────────────────────────
 
 export function formatChord(chord: Chord): string {
+  // Bass-walk shorthand: show only "/Bb" — the carried-over root/quality is
+  // implied by the preceding chord and intentionally not repeated.
+  if (chord.bassOnly && chord.bass) return `/${chord.bass}`
   const quality = QUALITY_SYMBOLS[chord.quality] ?? chord.quality
   const ext = chord.extensions?.join("") ?? ""
   const bass = chord.bass ? `/${chord.bass}` : ""

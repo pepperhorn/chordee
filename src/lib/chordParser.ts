@@ -228,7 +228,13 @@ export function resolveChordEntry(
     }
     return {
       kind: "chord",
-      chord: { ...currentChord, bass: bassResult.clear ? undefined : bassResult.bass },
+      chord: {
+        ...currentChord,
+        bass: bassResult.clear ? undefined : bassResult.bass,
+        // Bare "/" clears the bass and reverts to the full chord display;
+        // "/Bb" renders as just the slash-bass without repeating the chord.
+        bassOnly: bassResult.clear ? undefined : true,
+      },
     }
   }
 
