@@ -116,6 +116,18 @@ export interface ChartState {
   historyIndex: number
 
   // Chart mutations
+  /** Replace the current document with an editable local document. */
+  openLocalDocument: (chart: ChordChart) => void
+  /** Replace the current document with a shared document and its access state. */
+  openSharedDocument: (
+    chart: ChordChart,
+    state: {
+      readOnly: boolean
+      canFork: boolean
+      activeShare: EditorUIState["activeShare"]
+    }
+  ) => void
+  /** @deprecated Prefer an explicit document transition API. */
   setChart: (chart: ChordChart) => void
   updateMeta: (meta: Partial<ChartMeta>) => void
 
@@ -304,6 +316,26 @@ export const useChartStore = create<ChartState>()(
       set({ chart: newChart, history: newHistory, historyIndex: newHistory.length - 1 })
     }
 
+    function openDocument(
+      chart: ChordChart,
+      shareState: Pick<EditorUIState, "readOnly" | "canFork" | "activeShare">
+    ) {
+      const nextChart = deepClone(chart)
+      set((state) => ({
+        chart: nextChart,
+        history: [{ chart: deepClone(nextChart), description: "Open document" }],
+        historyIndex: 0,
+        ui: {
+          ...state.ui,
+          ...shareState,
+          selection: null,
+          endingPicker: null,
+          activeInput: "none",
+          focusField: null,
+        },
+      }))
+    }
+
     function mutateChart(
       description: string,
       mutator: (chart: ChordChart) => void
@@ -373,6 +405,18 @@ export const useChartStore = create<ChartState>()(
       historyIndex: 0,
 
       // ── Chart mutations ──────────────────────────────────────
+
+      openLocalDocument: (chart) => {
+        openDocument(chart, {
+          readOnly: false,
+          canFork: false,
+          activeShare: null,
+        })
+      },
+
+      openSharedDocument: (chart, shareState) => {
+        openDocument(chart, shareState)
+      },
 
       setChart: (chart) => {
         pushHistory("Set chart", deepClone(chart))

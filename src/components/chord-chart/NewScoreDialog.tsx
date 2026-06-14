@@ -15,14 +15,14 @@ interface NewScoreDialogProps {
 
 export function NewScoreDialog({ isOpen, onClose }: NewScoreDialogProps) {
   const chart = useChartStore((s) => s.chart)
-  const setChart = useChartStore((s) => s.setChart)
+  const openLocalDocument = useChartStore((s) => s.openLocalDocument)
   const exportJSON = useChartStore((s) => s.exportJSON)
   const auth = useAuthContext()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const reset = () => {
-    setChart(createEmptyChart())
+    openLocalDocument(createEmptyChart())
     onClose()
   }
 

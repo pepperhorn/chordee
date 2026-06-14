@@ -256,17 +256,13 @@ describe("read-only document capability", () => {
     expect(useChartStore.getState().historyIndex).toBe(0)
   })
 
-  it("allows trusted document replacement and local view settings", () => {
+  it("allows local view settings while read-only", () => {
     const store = useChartStore.getState()
     store.setShareState({
       readOnly: true,
       canFork: true,
       activeShare: null,
     })
-    const replacement = testChart()
-    replacement.meta.title = "Resolved share"
-
-    store.setChart(replacement)
     store.setZoom(125)
     store.setSelection({
       type: "slot",
@@ -277,9 +273,45 @@ describe("read-only document capability", () => {
     })
 
     const state = useChartStore.getState()
-    expect(state.chart.meta.title).toBe("Resolved share")
     expect(state.ui.zoom).toBe(125)
     expect(state.ui.selection?.type).toBe("slot")
     expect(state.ui.readOnly).toBe(true)
+  })
+
+  it("opens shared and local documents as atomic history boundaries", () => {
+    const shared = testChart()
+    shared.meta.title = "Shared"
+    const store = useChartStore.getState()
+
+    store.openSharedDocument(shared, {
+      readOnly: true,
+      canFork: true,
+      activeShare: {
+        code: "share-code",
+        visibility: "link_view",
+        ownerId: "owner",
+        source: "owned",
+      },
+    })
+
+    let state = useChartStore.getState()
+    expect(state.chart.meta.title).toBe("Shared")
+    expect(state.history).toHaveLength(1)
+    expect(state.historyIndex).toBe(0)
+    expect(state.ui.readOnly).toBe(true)
+    expect(state.ui.canFork).toBe(true)
+    expect(state.ui.activeShare?.code).toBe("share-code")
+
+    const local = testChart()
+    local.meta.title = "Local copy"
+    state.openLocalDocument(local)
+
+    state = useChartStore.getState()
+    expect(state.chart.meta.title).toBe("Local copy")
+    expect(state.history).toHaveLength(1)
+    expect(state.historyIndex).toBe(0)
+    expect(state.ui.readOnly).toBe(false)
+    expect(state.ui.canFork).toBe(false)
+    expect(state.ui.activeShare).toBeNull()
   })
 })

@@ -134,8 +134,7 @@ function CollectionGroup({
 
 function LibraryImpl({ isOpen, onClose }: LibraryProps) {
   const auth = useAuthContext()
-  const setChart = useChartStore((s) => s.setChart)
-  const clearShareState = useChartStore((s) => s.clearShareState)
+  const openLocalDocument = useChartStore((s) => s.openLocalDocument)
   const showToast = useChartStore((s) => s.showToast)
   const [sources, setSources] = useState<SourceState[]>([])
   const [query, setQuery] = useState("")
@@ -204,14 +203,17 @@ function LibraryImpl({ isOpen, onClose }: LibraryProps) {
       const plugin = plugins.find((p) => p.id === item.pluginId)
       if (!plugin) return
       try {
-        await plugin.onActivate(item, undefined, { auth, setChart, showToast })
-        clearShareState()
+        await plugin.onActivate(item, undefined, {
+          auth,
+          setChart: openLocalDocument,
+          showToast,
+        })
         onClose()
       } catch (e) {
         showToast?.((e as Error).message || "Couldn't open that item.", "error")
       }
     },
-    [auth, setChart, clearShareState, showToast, onClose],
+    [auth, openLocalDocument, showToast, onClose],
   )
 
   const handleAction = useCallback(
@@ -226,24 +228,30 @@ function LibraryImpl({ isOpen, onClose }: LibraryProps) {
             return
           }
           // First load the source payload, then fork.
-          await plugin.onActivate(item, action, { auth, setChart, showToast })
+          await plugin.onActivate(item, action, {
+            auth,
+            setChart: openLocalDocument,
+            showToast,
+          })
           // Read the freshly loaded chart from the store.
           const current = useChartStore.getState().chart
           const fresh = await forkChart(current, auth.user.id, auth.token)
-          setChart(fresh)
-          clearShareState()
+          openLocalDocument(fresh)
           showToast?.(`Forked as "${fresh.meta.title}"`, "info")
           onClose()
           return
         }
-        await plugin.onActivate(item, action, { auth, setChart, showToast })
-        clearShareState()
+        await plugin.onActivate(item, action, {
+          auth,
+          setChart: openLocalDocument,
+          showToast,
+        })
         onClose()
       } catch (e) {
         showToast?.((e as Error).message || "Action failed.", "error")
       }
     },
-    [auth, setChart, clearShareState, showToast, onClose],
+    [auth, openLocalDocument, showToast, onClose],
   )
 
   if (!isOpen) return null
