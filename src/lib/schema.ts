@@ -18,6 +18,7 @@ export const ChordSchema = z.object({
 export const NashvilleChordSchema = z.object({
   degree: z.string(),
   quality: z.string().optional(),
+  extensions: z.array(z.string()).optional(),
 })
 
 export const SlashSchema = z.object({

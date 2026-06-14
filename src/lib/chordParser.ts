@@ -177,17 +177,22 @@ function parseNashvilleChord(input: string): ParseResult {
   if (!degree) return { valid: false, error: "Invalid Nashville number" }
 
   let quality: string | undefined
+  let extensions: string[] | undefined
   if (rest.length > 0) {
     const qualityResult = parseQualityWithExtensions(rest)
     if (!qualityResult) {
       return { valid: false, error: `Invalid quality: "${rest}"` }
     }
     quality = qualityResult.quality
+    extensions =
+      qualityResult.extensions.length > 0
+        ? qualityResult.extensions
+        : undefined
   }
 
   return {
     valid: true,
-    nashvilleChord: { degree, quality },
+    nashvilleChord: { degree, quality, extensions },
   }
 }
 

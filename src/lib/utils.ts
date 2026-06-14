@@ -139,18 +139,7 @@ export function findEffectiveChord(
   slotId: string | undefined | null
 ): Chord | null {
   if (!slotId) return null
-  let lastChord: Chord | null = null
-  for (const section of chart.sections) {
-    for (const measure of section.measures) {
-      for (const beat of measure.beats) {
-        for (const slot of beat.slots) {
-          if (slot.chord) lastChord = slot.chord
-          if (slot.id === slotId) return lastChord
-        }
-      }
-    }
-  }
-  return lastChord
+  return findChordAtSlot(chart, ({ slot }) => slot.id === slotId)?.chord ?? null
 }
 
 export function formatTimeSignature(ts: TimeSignature): string {
@@ -186,59 +175,42 @@ export function getInheritedChord(
   beatId: string,
   slotId: string
 ): { chord: Chord; inherited: boolean } | null {
-  // Flatten all slots in order across the entire chart
+  return findChordAtSlot(
+    chart,
+    ({ section, measure, beat, slot }) =>
+      section.id === sectionId &&
+      measure.id === measureId &&
+      beat.id === beatId &&
+      slot.id === slotId
+  )
+}
+
+interface SlotContext {
+  section: Section
+  measure: Measure
+  beat: Beat
+  slot: BeatSlot
+}
+
+function findChordAtSlot(
+  chart: ChordChart,
+  isTarget: (context: SlotContext) => boolean
+): { chord: Chord; inherited: boolean } | null {
+  let effectiveChord: Chord | null = null
+
   for (const section of chart.sections) {
     for (const measure of section.measures) {
       for (const beat of measure.beats) {
         for (const slot of beat.slots) {
-          if (
-            section.id === sectionId &&
-            measure.id === measureId &&
-            beat.id === beatId &&
-            slot.id === slotId
-          ) {
-            // Found target — if it has a chord, return it (not inherited)
-            if (slot.chord) return { chord: slot.chord, inherited: false }
-            // Otherwise walk backwards from here
-            return walkBackForChord(chart, sectionId, measureId, beatId, slotId)
-          }
-        }
-      }
-    }
-  }
-  return null
-}
-
-function walkBackForChord(
-  chart: ChordChart,
-  sectionId: string,
-  measureId: string,
-  beatId: string,
-  slotId: string
-): { chord: Chord; inherited: boolean } | null {
-  let found = false
-  // Walk in reverse
-  const sections = [...chart.sections].reverse()
-  for (const section of sections) {
-    const measures = [...section.measures].reverse()
-    for (const measure of measures) {
-      const beats = [...measure.beats].reverse()
-      for (const beat of beats) {
-        const slots = [...beat.slots].reverse()
-        for (const slot of slots) {
-          if (found) {
-            // N.C. breaks inheritance — nothing inherits past it
+          if (isTarget({ section, measure, beat, slot })) {
             if (slot.noChord) return null
-            if (slot.chord) return { chord: slot.chord, inherited: true }
+            if (slot.chord) return { chord: slot.chord, inherited: false }
+            return effectiveChord
+              ? { chord: effectiveChord, inherited: true }
+              : null
           }
-          if (
-            section.id === sectionId &&
-            measure.id === measureId &&
-            beat.id === beatId &&
-            slot.id === slotId
-          ) {
-            found = true
-          }
+          if (slot.noChord) effectiveChord = null
+          else if (slot.chord) effectiveChord = slot.chord
         }
       }
     }

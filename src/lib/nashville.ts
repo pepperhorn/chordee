@@ -55,13 +55,13 @@ function pcToRoot(pc: number, preferSharps: boolean): string {
   return (preferSharps ? sharp : flat)[((pc % 12) + 12) % 12]
 }
 
-/** Quality goes through unchanged — Nashville quality strings match chord quality strings. */
+/** Quality and extensions go through unchanged between notation systems. */
 export function chordToNashville(chord: Chord, key: string): NashvilleChord {
   const { pc: tonic, preferSharps } = parseTonic(key)
   const rootPc = rootToPc(chord.root)
   const semis = rootPc - tonic
   const degree = semitoneToDegree(semis, preferSharps)
-  return { degree, quality: chord.quality }
+  return { degree, quality: chord.quality, extensions: chord.extensions }
 }
 
 export function nashvilleToChord(nash: NashvilleChord, key: string): Chord {
@@ -71,12 +71,15 @@ export function nashvilleToChord(nash: NashvilleChord, key: string): Chord {
   return {
     root: pcToRoot(rootPc, preferSharps),
     quality: nash.quality || "maj",
+    extensions: nash.extensions,
   }
 }
 
 /** Format a Nashville chord into its display string, e.g. "4m7" or "b7". */
 export function formatNashville(nash: NashvilleChord): string {
-  return nash.degree + (nash.quality && nash.quality !== "maj" ? qualitySuffix(nash.quality) : "")
+  const quality =
+    nash.quality && nash.quality !== "maj" ? qualitySuffix(nash.quality) : ""
+  return nash.degree + quality + (nash.extensions?.join("") ?? "")
 }
 
 function qualitySuffix(quality: string): string {
