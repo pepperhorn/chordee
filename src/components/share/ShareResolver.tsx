@@ -13,8 +13,7 @@ const SHARE_PATH = /^\/c\/([A-Za-z0-9]+)\/?$/
  *  ownership from anonymous viewing. */
 export function ShareResolver() {
   const auth = useAuthContext()
-  const setChart = useChartStore((s) => s.setChart)
-  const setShareState = useChartStore((s) => s.setShareState)
+  const openSharedDocument = useChartStore((s) => s.openSharedDocument)
   const showToast = useChartStore((s) => s.showToast)
   const ranRef = useRef(false)
 
@@ -38,8 +37,7 @@ export function ShareResolver() {
           showToast?.("This share link isn't available.", "warning")
           return
         }
-        setChart(resolved.chart)
-        setShareState({
+        openSharedDocument(resolved.chart, {
           readOnly: !resolved.canEdit,
           canFork: resolved.canFork,
           activeShare: {
@@ -56,7 +54,7 @@ export function ShareResolver() {
       .catch(() => {
         showToast?.("Couldn't load this share link.", "error")
       })
-  }, [auth.isLoading, auth.token, auth.user?.id, setChart, setShareState, showToast])
+  }, [auth.isLoading, auth.token, auth.user?.id, openSharedDocument, showToast])
 
   return null
 }

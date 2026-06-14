@@ -306,8 +306,7 @@ export function Toolbar() {
   const readOnly = useChartStore((s) => s.ui.readOnly)
   const canFork = useChartStore((s) => s.ui.canFork)
   const activeShare = useChartStore((s) => s.ui.activeShare)
-  const setChart = useChartStore((s) => s.setChart)
-  const clearShareState = useChartStore((s) => s.clearShareState)
+  const openLocalDocument = useChartStore((s) => s.openLocalDocument)
   const showToast = useChartStore((s) => s.showToast)
 
   const handleCloudSave = useCallback(async () => {
@@ -337,8 +336,7 @@ export function Toolbar() {
     setSaveError(null)
     try {
       const fresh = await forkChart(chart, auth.user.id, auth.token)
-      setChart(fresh)
-      clearShareState()
+      openLocalDocument(fresh)
       // Reset URL so further saves go to the new fork (not the share path).
       if (typeof window !== "undefined" && window.location.pathname.startsWith("/c/")) {
         window.history.replaceState(null, "", "/")
@@ -349,7 +347,7 @@ export function Toolbar() {
     } finally {
       setForking(false)
     }
-  }, [auth, chart, setChart, clearShareState, showToast])
+  }, [auth, chart, openLocalDocument, showToast])
 
   // Keyboard shortcuts: Cmd/Ctrl+N (new score), Cmd/Ctrl+S (save)
   useEffect(() => {
