@@ -18,20 +18,13 @@ interface CreditEntry {
   note?: string
 }
 
-const MAJOR_CREDITS: CreditEntry[] = [
-  {
-    name: "Pretext",
-    author: "Cheng Lou",
-    url: "https://github.com/chenglou/pretext",
-    note: "Layout engine — measure-then-render pipeline that powers every beat position in chordee. Without Pretext this editor doesn't exist.",
-  },
-  {
-    name: "VexFlow",
-    author: "Mohit Cheppudira + contributors",
-    url: "https://github.com/0xfe/vexflow",
-    note: "Reference for beam rendering, stave layout, and music notation patterns. Required reading for anyone working on notation on the web.",
-  },
-]
+/** The one dependency chordee is architecturally built around. */
+const HEADLINE_CREDIT: CreditEntry = {
+  name: "Pretext",
+  author: "Cheng Lou",
+  url: "https://github.com/chenglou/pretext",
+  note: "The layout engine. Every beat position, bar width, line break and justified line in chordee comes out of Pretext's measure-then-render pipeline. Nothing is positioned by CSS. Without Pretext this editor doesn't exist.",
+}
 
 const MUSIC_FONTS: CreditEntry[] = [
   {
@@ -48,19 +41,118 @@ const MUSIC_FONTS: CreditEntry[] = [
   },
 ]
 
-const STACK: CreditEntry[] = [
-  { name: "Astro", url: "https://astro.build" },
-  { name: "React", url: "https://react.dev" },
-  { name: "Tailwind CSS", url: "https://tailwindcss.com" },
-  { name: "Radix UI", url: "https://www.radix-ui.com" },
-  { name: "Zustand", url: "https://github.com/pmndrs/zustand" },
-  { name: "Zod", url: "https://zod.dev" },
-  { name: "pdf-lib", url: "https://pdf-lib.js.org" },
-  { name: "Lucide Icons", url: "https://lucide.dev" },
-  { name: "smplr (playback)", url: "https://github.com/danigb/smplr" },
+interface LibEntry {
+  name: string
+  url: string
+  license: string
+  note?: string
+}
+
+/**
+ * Every library bundled into the shipped app, with its license.
+ *
+ * Tracks `dependencies` in package.json — add an entry whenever you add a
+ * runtime dependency. Build-time tooling is out of scope, with one
+ * exception: `tailwindcss` is a devDependency but its output ships in the
+ * bundle, so it is credited alongside `@tailwindcss/postcss`.
+ */
+const BUNDLED_LIBS: LibEntry[] = [
+  {
+    name: "@chenglou/pretext",
+    url: "https://github.com/chenglou/pretext",
+    license: "MIT",
+    note: "Layout engine",
+  },
+  { name: "astro", url: "https://astro.build", license: "MIT", note: "App framework" },
+  {
+    name: "@astrojs/react",
+    url: "https://docs.astro.build/en/guides/integrations-guide/react/",
+    license: "MIT",
+    note: "React integration",
+  },
+  {
+    name: "react · react-dom",
+    url: "https://react.dev",
+    license: "MIT",
+    note: "UI runtime",
+  },
+  {
+    name: "zustand",
+    url: "https://github.com/pmndrs/zustand",
+    license: "MIT",
+    note: "State + undo/redo",
+  },
+  { name: "zod", url: "https://zod.dev", license: "MIT", note: "Schema validation" },
+  {
+    name: "@radix-ui/react-*",
+    url: "https://www.radix-ui.com",
+    license: "MIT",
+    note: "dialog, dropdown-menu, label, popover, scroll-area, select, separator, slot, tabs, tooltip",
+  },
+  {
+    name: "tailwindcss · @tailwindcss/postcss",
+    url: "https://tailwindcss.com",
+    license: "MIT",
+    note: "UI styling",
+  },
+  {
+    name: "tw-animate-css",
+    url: "https://github.com/Wombosvideo/tw-animate-css",
+    license: "MIT",
+    note: "Animation utilities",
+  },
+  {
+    name: "class-variance-authority",
+    url: "https://cva.style",
+    license: "Apache-2.0",
+    note: "Variant styling",
+  },
+  {
+    name: "clsx",
+    url: "https://github.com/lukeed/clsx",
+    license: "MIT",
+    note: "Class name builder",
+  },
+  {
+    name: "tailwind-merge",
+    url: "https://github.com/dcastil/tailwind-merge",
+    license: "MIT",
+    note: "Class conflict resolution",
+  },
+  {
+    name: "cmdk",
+    url: "https://github.com/pacocoursey/cmdk",
+    license: "MIT",
+    note: "Command menu",
+  },
+  { name: "lucide-react", url: "https://lucide.dev", license: "ISC", note: "Icons" },
+  {
+    name: "pdf-lib",
+    url: "https://pdf-lib.js.org",
+    license: "MIT",
+    note: "PDF export",
+  },
+  {
+    name: "qrcode",
+    url: "https://github.com/soldair/node-qrcode",
+    license: "MIT",
+    note: "Share codes",
+  },
+  {
+    name: "nanoid",
+    url: "https://github.com/ai/nanoid",
+    license: "MIT",
+    note: "ID generation",
+  },
+  {
+    name: "smplr",
+    url: "https://github.com/danigb/smplr",
+    license: "MIT",
+    note: "Audio playback",
+  },
 ]
 
-function CreditLink({ entry }: { entry: CreditEntry }) {
+function CreditLink({ entry }: { entry: { name: string; url: string } }) {
   return (
     <a
       href={entry.url}
@@ -85,40 +177,38 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
               className="h-6 w-auto"
               draggable={false}
             />
-            <span className="text-base text-muted-foreground font-normal">
-              a chord chart editor
+            <span className="about-strapline text-base text-muted-foreground font-normal">
+              simple chord charts done right
             </span>
           </DialogTitle>
           <DialogDescription>
-            Built on the shoulders of giants. Here are some of them.
+            Built on the shoulders of giants. Here are all of them.
           </DialogDescription>
         </DialogHeader>
 
         <div className="about-body space-y-5 overflow-y-auto pr-2" style={{ maxHeight: "70vh" }}>
-          {/* Big shout-outs */}
-          <section className="about-section space-y-3">
+          {/* Headline credit — Pretext carries the whole architecture */}
+          <section className="about-section about-section--headline space-y-2 rounded-lg border border-border bg-muted/40 p-4">
             <h3 className="about-section-title text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Huge shout-outs
+              Built on
             </h3>
-            <ul className="space-y-3">
-              {MAJOR_CREDITS.map((c) => (
-                <li key={c.name} className="credit-item">
-                  <div className="flex flex-wrap items-baseline gap-x-2">
-                    <CreditLink entry={c} />
-                    {c.author && (
-                      <span className="credit-author text-xs text-muted-foreground">
-                        by {c.author}
-                      </span>
-                    )}
-                  </div>
-                  {c.note && (
-                    <p className="credit-note text-sm text-muted-foreground mt-0.5">
-                      {c.note}
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <div className="credit-item credit-item--headline">
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-lg font-semibold">
+                  <CreditLink entry={HEADLINE_CREDIT} />
+                </span>
+                {HEADLINE_CREDIT.author && (
+                  <span className="credit-author text-xs text-muted-foreground">
+                    by {HEADLINE_CREDIT.author}
+                  </span>
+                )}
+              </div>
+              {HEADLINE_CREDIT.note && (
+                <p className="credit-note text-sm text-muted-foreground mt-1">
+                  {HEADLINE_CREDIT.note}
+                </p>
+              )}
+            </div>
           </section>
 
           {/* Music fonts */}
@@ -141,19 +231,29 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
             </ul>
           </section>
 
-          {/* Stack */}
+          {/* Every bundled library */}
           <section className="about-section space-y-2">
             <h3 className="about-section-title text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Stack
+              Bundled libraries
             </h3>
-            <p className="text-sm text-muted-foreground">
-              {STACK.map((c, i) => (
-                <span key={c.name}>
-                  <CreditLink entry={c} />
-                  {i < STACK.length - 1 && " · "}
-                </span>
+            <ul className="bundled-libs divide-y divide-border/60">
+              {BUNDLED_LIBS.map((lib) => (
+                <li
+                  key={lib.name}
+                  className="bundled-lib flex flex-wrap items-baseline gap-x-2 py-1.5 text-sm"
+                >
+                  <CreditLink entry={lib} />
+                  {lib.note && (
+                    <span className="bundled-lib-note text-xs text-muted-foreground">
+                      {lib.note}
+                    </span>
+                  )}
+                  <span className="bundled-lib-license ml-auto shrink-0 rounded border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {lib.license}
+                  </span>
+                </li>
               ))}
-            </p>
+            </ul>
           </section>
 
           <section className="about-section space-y-1 border-t pt-4">
