@@ -50,8 +50,11 @@ interface LibEntry {
 
 /**
  * Every library bundled into the shipped app, with its license.
- * Keep this in sync with `dependencies` in package.json — if you add a
- * runtime dependency, add it here too.
+ *
+ * Tracks `dependencies` in package.json — add an entry whenever you add a
+ * runtime dependency. Build-time tooling is out of scope, with one
+ * exception: `tailwindcss` is a devDependency but its output ships in the
+ * bundle, so it is credited alongside `@tailwindcss/postcss`.
  */
 const BUNDLED_LIBS: LibEntry[] = [
   {
