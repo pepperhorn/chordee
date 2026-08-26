@@ -14,8 +14,8 @@ export const BRAND_TAGLINES: string[] = [
   "chordee.app — real books for real musicians",
   "powered by pretext · chordee.app",
   "layouts by pretext · chordee.app",
-  "beams inspired by vexflow · chordee.app",
-  "standing on pretext & vexflow · chordee.app",
+  "standing on pretext · chordee.app",
+  "simple chord charts done right · chordee.app",
 ]
 
 /** Pick a random tagline. Stable per-call (no side effects). */
