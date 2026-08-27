@@ -7,7 +7,6 @@ import {
   DIVISION_MULTIPLIERS,
   MIN_BEAT_WIDTH,
   getMeasureBarlineWidths,
-  DEFAULT_SPACING,
 } from "./constants"
 import type {
   LayoutConfig,

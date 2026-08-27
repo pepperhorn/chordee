@@ -1,3 +1,5 @@
+import { useGlyphMetrics } from "@/lib/glyphs/useGlyphMetrics"
+
 interface SlashProps {
   x: number
   y: number
@@ -19,7 +21,13 @@ export function Slash({
   stemDirection = "up",
   tied = false,
 }: SlashProps) {
+  const metrics = useGlyphMetrics()
   const isUp = stemDirection === "up"
+  const stemLength = metrics.stemLength / 2
+  const articOffset = metrics.articulationOffset
+  const strokeW = metrics.slashNoteheadThickness
+  const stemW = metrics.stemThickness
+  const tieEnd = metrics.tieEndpointThickness
 
   return (
     <g
@@ -36,7 +44,7 @@ export function Slash({
         x2={width}
         y2={0}
         stroke="currentColor"
-        strokeWidth={2}
+        strokeWidth={strokeW}
         strokeLinecap="round"
       />
 
@@ -47,9 +55,9 @@ export function Slash({
           x1={width}
           y1={0}
           x2={width}
-          y2={-10}
+          y2={-stemLength}
           stroke="currentColor"
-          strokeWidth={1.2}
+          strokeWidth={stemW}
         />
       )}
       {stem && !isUp && (
@@ -58,9 +66,9 @@ export function Slash({
           x1={0}
           y1={height}
           x2={0}
-          y2={height + 10}
+          y2={height + stemLength}
           stroke="currentColor"
-          strokeWidth={1.2}
+          strokeWidth={stemW}
         />
       )}
 
@@ -68,10 +76,10 @@ export function Slash({
       {articulation === "accent" && (
         <path
           className="slash-articulation slash-articulation--accent"
-          d={`M${width / 2 - 4},${isUp ? height + 6 : -6} L${width / 2},${isUp ? height + 3 : -3} L${width / 2 + 4},${isUp ? height + 6 : -6}`}
+          d={`M${width / 2 - 4},${isUp ? height + articOffset : -articOffset} L${width / 2},${isUp ? height + articOffset * 0.5 : -articOffset * 0.5} L${width / 2 + 4},${isUp ? height + articOffset : -articOffset}`}
           fill="none"
           stroke="currentColor"
-          strokeWidth={1.2}
+          strokeWidth={stemW}
         />
       )}
 
@@ -80,7 +88,7 @@ export function Slash({
         <circle
           className="slash-articulation slash-articulation--staccato"
           cx={width / 2}
-          cy={isUp ? height + 6 : -6}
+          cy={isUp ? height + articOffset : -articOffset}
           r={1.5}
           fill="currentColor"
         />
@@ -93,7 +101,7 @@ export function Slash({
           d={`M${width / 2 - 3},${isUp ? -14 : height + 14} L${width / 2},${isUp ? -18 : height + 18} L${width / 2 + 3},${isUp ? -14 : height + 14}`}
           fill="none"
           stroke="currentColor"
-          strokeWidth={1.5}
+          strokeWidth={stemW}
         />
       )}
 
@@ -102,11 +110,11 @@ export function Slash({
         <line
           className="slash-articulation slash-articulation--legato"
           x1={width / 2 - 4}
-          y1={isUp ? height + 6 : -6}
+          y1={isUp ? height + articOffset : -articOffset}
           x2={width / 2 + 4}
-          y2={isUp ? height + 6 : -6}
+          y2={isUp ? height + articOffset : -articOffset}
           stroke="currentColor"
-          strokeWidth={1.5}
+          strokeWidth={stemW}
         />
       )}
 
@@ -117,7 +125,7 @@ export function Slash({
           d={`M${width + 2},${height / 2} Q${width + 12},${height / 2 + 8} ${width + 22},${height / 2}`}
           fill="none"
           stroke="currentColor"
-          strokeWidth={1}
+          strokeWidth={tieEnd}
         />
       )}
     </g>
