@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { METRIC_DEFS, type MetricDef } from "./glyphs/registry"
 import {
   DEFAULT_FONT_CONFIG,
   FONT_FAMILIES,
@@ -58,6 +59,20 @@ export const UserStyleFontConfigSchema = z.object({
   lineSpacing: RELATIVE_SIZE_ENUM,
 })
 
+/**
+ * Per-metric glyph overrides. Built from METRIC_DEFS so every key is
+ * validated against its own min/max — adding a metric to the registry
+ * extends this schema automatically.
+ */
+export const GlyphOverridesSchema = z.object(
+  Object.fromEntries(
+    (METRIC_DEFS as readonly MetricDef[]).map((d) => [
+      d.key,
+      z.number().min(d.min).max(d.max).optional(),
+    ]),
+  ),
+)
+
 export const UserStyleLayoutSchema = z.object({
   measuresPerLineMode: z.enum(["auto", "fixed"]),
   measuresPerLine: z.number().int().min(1).max(12).optional(),
@@ -77,9 +92,24 @@ export const UserStyleSchema = z.object({
   layout: UserStyleLayoutSchema,
   fonts: UserStyleFontConfigSchema,
   page: UserStylePageSchema.optional(),
+  /** Glyph geometry edits. Absent means "use the font's SMuFL defaults". */
+  glyphs: GlyphOverridesSchema.optional(),
+})
+
+/**
+ * A named, saveable style. Same shape as UserStyle, plus the identity a
+ * profile needs: a stable id and a required name, so a user can keep
+ * several configurations and switch between them.
+ */
+export const StyleProfileSchema = UserStyleSchema.extend({
+  id: z.string().min(1),
+  name: z.string().min(1).max(60),
+  updatedAt: z.string(),
 })
 
 export type UserStyle = z.infer<typeof UserStyleSchema>
+export type StyleProfile = z.infer<typeof StyleProfileSchema>
+export type GlyphOverrides = z.infer<typeof GlyphOverridesSchema>
 export type UserStyleLayout = z.infer<typeof UserStyleLayoutSchema>
 export type UserStylePage = z.infer<typeof UserStylePageSchema>
 
@@ -92,6 +122,7 @@ export function buildUserStyle(
   justification: "proportional" | "equal",
   name?: string,
   page?: UserStylePage,
+  glyphs?: GlyphOverrides,
 ): UserStyle {
   return {
     schema: "chordee/user-style",
@@ -108,6 +139,7 @@ export function buildUserStyle(
       ...fonts,
     } as UserStyle["fonts"],
     page,
+    glyphs,
   }
 }
 
