@@ -21,6 +21,7 @@ import {
   X,
   Image,
   Palette,
+  SlidersHorizontal,
   Volume2,
   VolumeX,
   ChevronDown,
@@ -52,6 +53,7 @@ import { PdfIcon } from "@/components/icons/PdfIcon"
 import { NewScoreDialog } from "./NewScoreDialog"
 import { Library } from "@/components/library/Library"
 import { ShareDialog } from "@/components/share/ShareDialog"
+import { StyleProfileDialog } from "@/components/style/StyleProfileDialog"
 import { AccountButton } from "@/components/auth/AccountButton"
 import { AuthModal } from "@/components/auth/AuthModal"
 import { useAuthContext } from "@/lib/auth/AuthContext"
@@ -306,6 +308,7 @@ export function Toolbar() {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false)
+  const [stylePanelOpen, setStylePanelOpen] = useState(false)
   const [newScoreOpen, setNewScoreOpen] = useState(false)
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
@@ -477,6 +480,7 @@ export function Toolbar() {
           <ToolbarButton icon={Download} label="Export JSON" onClick={handleExportJSON} className="btn-export-json" />
           <ToolbarButton icon={FileText} label="Export MD" onClick={handleExportMarkdown} className="btn-export-markdown" />
           <ToolbarButton icon={PdfIcon} label="Export PDF" onClick={() => { setPdfDialogOpen(true); setMobileMenuOpen(false) }} className="btn-export-pdf" />
+          <ToolbarButton icon={SlidersHorizontal} label="Style profiles" onClick={() => { setStylePanelOpen(true); setMobileMenuOpen(false) }} className="btn-style-profiles" />
 
           {/* Account / sign-in */}
           <div className="mobile-account flex items-center">
@@ -852,6 +856,13 @@ export function Toolbar() {
             onClick={() => setPdfDialogOpen(true)}
             className="btn-export-pdf"
           />
+          <ToolbarButton
+            icon={SlidersHorizontal}
+            label="Style profiles"
+            shortcut="Glyph metrics and saved style profiles"
+            onClick={() => setStylePanelOpen(true)}
+            className="btn-style-profiles"
+          />
         </div>
 
         <Separator orientation="vertical" className="toolbar-sep mx-1 h-5 bg-white/20" />
@@ -871,6 +882,7 @@ export function Toolbar() {
       <NewScoreDialog isOpen={newScoreOpen} onClose={() => setNewScoreOpen(false)} />
       <Library isOpen={libraryOpen} onClose={() => setLibraryOpen(false)} />
       <ShareDialog isOpen={shareOpen} onClose={() => setShareOpen(false)} />
+      <StyleProfileDialog open={stylePanelOpen} onOpenChange={setStylePanelOpen} />
       <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} auth={auth} />
       {readOnly && (
         <div

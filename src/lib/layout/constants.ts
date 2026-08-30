@@ -1,3 +1,13 @@
+import {
+  defaultMetrics,
+  DEFAULT_SMUFL_FONT,
+  STAVE_HEIGHT as REGISTRY_STAVE_HEIGHT,
+} from "../glyphs/registry"
+
+/** Font-default metrics, used for layout measurement (which runs outside
+ *  React and so cannot read per-user overrides from the store). */
+const BASE_METRICS = defaultMetrics(DEFAULT_SMUFL_FONT)
+
 export const DEFAULT_SPACING = {
   beatPaddingX: 8,
   barPaddingX: 12,
@@ -5,19 +15,22 @@ export const DEFAULT_SPACING = {
   sectionGap: 24,
   lineHeight: 24,
   lyricLineHeight: 18,
-  staveHeight: 32,
+  staveHeight: REGISTRY_STAVE_HEIGHT,
   headerHeight: 28,
   chartPaddingX: 40,
   chartPaddingY: 40,
   clefKeySigWidth: 0,
 }
 
+/** Base type sizes for measurement. Sourced from the glyph registry so the
+ *  engine measures with the same numbers the renderers draw with — these used
+ *  to be a second, drifting copy (rehearsal disagreed: 16 here vs 13 drawn). */
 export const DEFAULT_FONT_SIZES = {
-  chord: 18,
-  lyric: 13,
-  section: 15,
-  rehearsal: 16,
-  dynamic: 13,
+  chord: BASE_METRICS.chordFontSize,
+  lyric: BASE_METRICS.lyricFontSize,
+  section: BASE_METRICS.sectionFontSize,
+  rehearsal: BASE_METRICS.rehearsalFontSize,
+  dynamic: BASE_METRICS.dynamicFontSize,
 }
 
 export const DIVISION_MULTIPLIERS: Record<string, number> = {
@@ -66,8 +79,9 @@ export function getMeasureBarlineWidths(measure: {
 export const STAVE_CHORD_BASELINE_FACTOR = -2
 /** Top edge of the stave below the chord row. */
 export const STAVE_TOP_FACTOR = 14
-/** Stave height in px (constant — does not scale). */
-export const STAVE_HEIGHT = 32
+/** Stave height in px (constant — does not scale). Defined by the glyph
+ *  registry, which also derives the staff-space unit from it. */
+export { STAVE_HEIGHT } from "../glyphs/registry"
 /** Padding between the chord row and the stave's top edge. */
 export const STAVE_TOP_PADDING = 6
 /** Vertical offset of barline-side hint text above the stave. */

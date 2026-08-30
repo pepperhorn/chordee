@@ -18,6 +18,7 @@ import { pruneOrphanedVoltas, reallocateEndings, generateRepeatRegionId } from "
 import { validBarlineStylesAt, cycleBarlineStyle } from "./barlineValidation"
 import type { Barline as BarlineStyle } from "./schema"
 import { buildUserStyle, UserStyleSchema, type UserStyle } from "./userStyle"
+import type { GlyphMetricOverrides } from "./glyphs/registry"
 import {
   createBeat,
   createBeatSlot,
@@ -57,6 +58,9 @@ export interface EditorUIState {
   articulationSize: "sm" | "md" | "lg" | "xl"
   showKeyboardShortcuts: boolean
   fontConfig: FontConfig
+  /** User edits to glyph/stave geometry. Empty means "use the font's own
+   *  SMuFL engraving defaults" — see lib/glyphs/registry.ts. */
+  glyphOverrides: GlyphMetricOverrides
   justificationStrategy: "proportional" | "equal"
   measuresPerLineMode: "auto" | "fixed"
   editMode: "chord" | "rhythm"
@@ -182,6 +186,8 @@ export interface ChartState {
   clearShareState: () => void
   toggleShowKeyboardShortcuts: () => void
   setFontConfig: (config: Partial<FontConfig>) => void
+  setGlyphOverrides: (overrides: GlyphMetricOverrides) => void
+  resetGlyphOverrides: () => void
   setJustificationStrategy: (s: "proportional" | "equal") => void
   setMeasuresPerLineMode: (mode: "auto" | "fixed") => void
   toggleEditMode: () => void
@@ -331,6 +337,7 @@ export const useChartStore = create<ChartState>()(
         articulationSize: "md",
         showKeyboardShortcuts: false,
         fontConfig: { ...DEFAULT_FONT_CONFIG },
+        glyphOverrides: {},
         justificationStrategy: "proportional",
         measuresPerLineMode: "auto",
         editMode: "chord",
@@ -636,6 +643,8 @@ export const useChartStore = create<ChartState>()(
         set((s) => ({ ui: { ...s.ui, readOnly: false, canFork: false, activeShare: null } })),
       toggleShowKeyboardShortcuts: () => set((s) => ({ ui: { ...s.ui, showKeyboardShortcuts: !s.ui.showKeyboardShortcuts } })),
       setFontConfig: (config) => set((s) => ({ ui: { ...s.ui, fontConfig: { ...s.ui.fontConfig, ...config } } })),
+      setGlyphOverrides: (overrides) => set((s) => ({ ui: { ...s.ui, glyphOverrides: { ...s.ui.glyphOverrides, ...overrides } } })),
+      resetGlyphOverrides: () => set((s) => ({ ui: { ...s.ui, glyphOverrides: {} } })),
       setJustificationStrategy: (justificationStrategy) => set((s) => ({ ui: { ...s.ui, justificationStrategy } })),
       setMeasuresPerLineMode: (measuresPerLineMode) => set((s) => ({ ui: { ...s.ui, measuresPerLineMode } })),
       toggleEditMode: () => set((s) => ({ ui: { ...s.ui, editMode: s.ui.editMode === "chord" ? "rhythm" : "chord" } })),

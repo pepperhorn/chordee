@@ -4,6 +4,7 @@ import {
   ACCIDENTAL_GLYPHS,
   getKeySignatureAccidentals,
 } from "@/lib/keySignature"
+import { useGlyphMetrics } from "@/lib/glyphs/useGlyphMetrics"
 import type { Clef } from "@/lib/schema"
 
 interface ClefKeySignatureProps {
@@ -16,9 +17,7 @@ interface ClefKeySignatureProps {
   showKeySig: boolean
 }
 
-const BASE_FONT_SIZE = 32
 const STAFF_LINES = 5
-const ACCIDENTAL_FONT_RATIO = 0.5
 
 export function ClefKeySignature({
   clef,
@@ -32,12 +31,13 @@ export function ClefKeySignature({
   const clefFont = useFontConfigField("clef")
   const clefColor = useFontConfigField("clefColor")
   const scale = useEffectiveScale("clefSize")
+  const metrics = useGlyphMetrics()
 
   if (!showClef && !showKeySig) return null
 
-  const fontSize = Math.round(BASE_FONT_SIZE * scale)
+  const fontSize = Math.round(metrics.clefFontSize * scale)
   const lineSpacing = staffHeight / (STAFF_LINES - 1)
-  const accFontSize = Math.round(fontSize * ACCIDENTAL_FONT_RATIO)
+  const accFontSize = Math.round(fontSize * metrics.accidentalFontRatio)
 
   const glyph = CLEF_GLYPHS[clef]
   const accidentals = showKeySig
@@ -73,7 +73,7 @@ export function ClefKeySignature({
             x2={totalWidth}
             y2={i * lineSpacing}
             stroke="currentColor"
-            strokeWidth={0.5}
+            strokeWidth={metrics.staffLineThickness}
             opacity={0.3}
           />
         ))}

@@ -1,4 +1,5 @@
 import { useFontConfigField, useEffectiveScale } from "@/lib/fontConfigContext"
+import { useGlyphMetrics } from "@/lib/glyphs/useGlyphMetrics"
 
 interface TimeSignatureDisplayProps {
   beats: number
@@ -7,8 +8,6 @@ interface TimeSignatureDisplayProps {
   y: number
   height: number
 }
-
-const BASE_FONT_SIZE = 28
 
 export function TimeSignatureDisplay({
   beats,
@@ -21,7 +20,8 @@ export function TimeSignatureDisplay({
   const tsSize = useFontConfigField("timeSignatureSize")
   const tsColor = useFontConfigField("timeSignatureColor")
   const scale = useEffectiveScale("timeSignatureSize")
-  const fontSize = BASE_FONT_SIZE * scale
+  const metrics = useGlyphMetrics()
+  const fontSize = metrics.timeSigFontSize * scale
   const midY = y + height / 2
 
   return (

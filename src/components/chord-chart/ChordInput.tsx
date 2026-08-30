@@ -3,9 +3,9 @@ import { useChartStore } from "@/lib/store"
 import { resolveChordEntry } from "@/lib/chordParser"
 import { formatChord, findEffectiveChord } from "@/lib/utils"
 import { useEffectiveScale } from "@/lib/fontConfigContext"
+import { useGlyphMetrics } from "@/lib/glyphs/useGlyphMetrics"
 import type { LayoutResult } from "@/lib/layout/types"
 
-const BASE_CHORD_FONT_SIZE = 18
 
 interface ChordInputProps {
   layout: LayoutResult
@@ -20,6 +20,7 @@ export function ChordInput({ layout }: ChordInputProps) {
   const setSelection = useChartStore((s) => s.setSelection)
   const chordFont = useChartStore((s) => s.ui.fontConfig.chord)
   const chordScale = useEffectiveScale("chordSize")
+  const metrics = useGlyphMetrics()
   const zoom = useChartStore((s) => s.ui.zoom)
 
   const [value, setValue] = useState("")
@@ -178,7 +179,7 @@ export function ChordInput({ layout }: ChordInputProps) {
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768
   if (!selectedEntry || !selection?.slotId || editMode !== "chord" || isMobile || !pos) return null
 
-  const fontSize = Math.round(BASE_CHORD_FONT_SIZE * chordScale)
+  const fontSize = Math.round(metrics.chordFontSize * chordScale)
 
   return (
     <div

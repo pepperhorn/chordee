@@ -1,13 +1,11 @@
 import type { LayoutSectionHeader } from "@/lib/layout/types"
 import { useChartStore } from "@/lib/store"
 import { useFontConfigField, useEffectiveScale } from "@/lib/fontConfigContext"
+import { useGlyphMetrics } from "@/lib/glyphs/useGlyphMetrics"
 
 interface SectionHeaderProps {
   header: LayoutSectionHeader
 }
-
-const BASE_SECTION_FONT_SIZE = 15
-const BASE_REHEARSAL_FONT_SIZE = 13
 
 export function SectionHeader({ header }: SectionHeaderProps) {
   const rehearsalFont = useFontConfigField("rehearsal")
@@ -18,8 +16,9 @@ export function SectionHeader({ header }: SectionHeaderProps) {
 
   const isSelected = selection?.sectionId === header.sectionId && selection?.type === "section"
   const scale = useEffectiveScale("rehearsalSize")
-  const sectionFontSize = Math.round(BASE_SECTION_FONT_SIZE * scale)
-  const rehearsalFontSize = Math.round(BASE_REHEARSAL_FONT_SIZE * scale)
+  const metrics = useGlyphMetrics()
+  const sectionFontSize = Math.round(metrics.sectionFontSize * scale)
+  const rehearsalFontSize = Math.round(metrics.rehearsalFontSize * scale)
   const boxSize = Math.round(20 * scale)
   const boxPadding = Math.round(4 * scale)
 

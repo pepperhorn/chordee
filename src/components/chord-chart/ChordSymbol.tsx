@@ -1,4 +1,5 @@
 import { useFontConfigField, useEffectiveScale } from "@/lib/fontConfigContext"
+import { useGlyphMetrics } from "@/lib/glyphs/useGlyphMetrics"
 
 interface ChordSymbolProps {
   text: string
@@ -7,13 +8,13 @@ interface ChordSymbolProps {
   centered?: boolean
 }
 
-const BASE_CHORD_FONT_SIZE = 18
 
 export function ChordSymbol({ text, x, y, centered = false }: ChordSymbolProps) {
   const chordFont = useFontConfigField("chord")
   const chordColor = useFontConfigField("chordColor")
   const scale = useEffectiveScale("chordSize")
-  const fontSize = Math.round(BASE_CHORD_FONT_SIZE * scale)
+  const metrics = useGlyphMetrics()
+  const fontSize = Math.round(metrics.chordFontSize * scale)
 
   return (
     <text

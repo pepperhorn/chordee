@@ -2,7 +2,14 @@
  * BeamedSlashGroup renders a group of slashes with proper beaming.
  * Noteheads are diagonal slash lines matching the individual Slash component.
  * Beams are SVG polygons. Supports stem-up and stem-down.
+ *
+ * Beam, stem and notehead geometry comes from the active music font's SMuFL
+ * engraving defaults via useGlyphMetrics() — see lib/glyphs/registry.ts. The
+ * numbers used to be hand-tuned constants in this file.
  */
+import { useGlyphMetrics } from "@/lib/glyphs/useGlyphMetrics"
+import { useFontConfigField } from "@/lib/fontConfigContext"
+import { smuflChar, type SmuflGlyphName } from "@/lib/glyphs/registry"
 
 interface BeamedSlashGroupProps {
   slotCount: number
@@ -15,12 +22,18 @@ interface BeamedSlashGroupProps {
   stemDirection?: "up" | "down"
 }
 
-const NH_WIDTH = 8
-const NH_HEIGHT = 12
-const NH_STROKE = 2
-const STEM_LENGTH = 20
-const BEAM_THICKNESS = 3
-const BEAM_SPACING = 5
+/** Rest glyph appropriate to each beamed division. */
+function restGlyphFor(division: string): SmuflGlyphName {
+  switch (division) {
+    case "sixteenth":
+    case "sixteenthTriplet":
+      return "rest16th"
+    case "thirtySecond":
+      return "rest32nd"
+    default:
+      return "rest8th"
+  }
+}
 
 function beamLevels(division: string): number {
   switch (division) {
@@ -47,6 +60,20 @@ export function BeamedSlashGroup({
   rests = [],
   stemDirection = "up",
 }: BeamedSlashGroupProps) {
+  const metrics = useGlyphMetrics()
+  const musicFont = useFontConfigField("clef")
+
+  const NH_WIDTH = metrics.slashNoteheadWidth
+  const NH_HEIGHT = metrics.slashNoteheadHeight
+  const NH_STROKE = metrics.slashNoteheadThickness
+  const STEM_LENGTH = metrics.stemLength
+  const STEM_THICKNESS = metrics.stemThickness
+  const BEAM_THICKNESS = metrics.beamThickness
+  const ARTIC_OFFSET = metrics.articulationOffset
+  // SMuFL publishes beamSpacing as the GAP between beams, so the distance
+  // between successive beam edges is thickness + gap.
+  const BEAM_PITCH = metrics.beamThickness + metrics.beamSpacing
+
   const levels = beamLevels(division)
   if (levels === 0 || slotCount <= 1) return null
 
@@ -89,10 +116,11 @@ export function BeamedSlashGroup({
               y={4}
               textAnchor="middle"
               fontSize={14}
+              fontFamily={`${musicFont}, Petaluma, Bravura, serif`}
               fill="currentColor"
               opacity={0.6}
             >
-              𝄾
+              {smuflChar(restGlyphFor(division))}
             </text>
           )
         }
@@ -122,24 +150,24 @@ export function BeamedSlashGroup({
               x2={sx}
               y2={beamY}
               stroke="currentColor"
-              strokeWidth={1.2}
+              strokeWidth={STEM_THICKNESS}
             />
 
             {/* Articulations — placed opposite to stems */}
             {note.articulation === "accent" && (
               <path
                 className="beamed-slash-articulation beamed-slash-articulation--accent"
-                d={`M${note.cx - 3},${isUp ? NH_HEIGHT / 2 + 5 : nhY - 5} L${note.cx},${isUp ? NH_HEIGHT / 2 + 2 : nhY - 2} L${note.cx + 3},${isUp ? NH_HEIGHT / 2 + 5 : nhY - 5}`}
+                d={`M${note.cx - 3},${isUp ? NH_HEIGHT / 2 + ARTIC_OFFSET : nhY - ARTIC_OFFSET} L${note.cx},${isUp ? NH_HEIGHT / 2 + ARTIC_OFFSET * 0.4 : nhY - ARTIC_OFFSET * 0.4} L${note.cx + 3},${isUp ? NH_HEIGHT / 2 + ARTIC_OFFSET : nhY - ARTIC_OFFSET}`}
                 fill="none"
                 stroke="currentColor"
-                strokeWidth={1.2}
+                strokeWidth={STEM_THICKNESS}
               />
             )}
             {note.articulation === "staccato" && (
               <circle
                 className="beamed-slash-articulation beamed-slash-articulation--staccato"
                 cx={note.cx}
-                cy={isUp ? NH_HEIGHT / 2 + 5 : nhY - 5}
+                cy={isUp ? NH_HEIGHT / 2 + ARTIC_OFFSET : nhY - ARTIC_OFFSET}
                 r={1.3}
                 fill="currentColor"
               />
@@ -150,18 +178,18 @@ export function BeamedSlashGroup({
                 d={`M${note.cx - 2.5},${isUp ? beamY - 3 : beamY + 3} L${note.cx},${isUp ? beamY - 7 : beamY + 7} L${note.cx + 2.5},${isUp ? beamY - 3 : beamY + 3}`}
                 fill="none"
                 stroke="currentColor"
-                strokeWidth={1.2}
+                strokeWidth={STEM_THICKNESS}
               />
             )}
             {note.articulation === "legato" && (
               <line
                 className="beamed-slash-articulation beamed-slash-articulation--legato"
                 x1={note.cx - 3}
-                y1={isUp ? NH_HEIGHT / 2 + 5 : nhY - 5}
+                y1={isUp ? NH_HEIGHT / 2 + ARTIC_OFFSET : nhY - ARTIC_OFFSET}
                 x2={note.cx + 3}
-                y2={isUp ? NH_HEIGHT / 2 + 5 : nhY - 5}
+                y2={isUp ? NH_HEIGHT / 2 + ARTIC_OFFSET : nhY - ARTIC_OFFSET}
                 stroke="currentColor"
-                strokeWidth={1.2}
+                strokeWidth={STEM_THICKNESS}
               />
             )}
           </g>
@@ -181,8 +209,8 @@ export function BeamedSlashGroup({
 
         // Stack beams away from noteheads
         const levelY = isUp
-          ? beamY - level * BEAM_SPACING
-          : beamY + level * BEAM_SPACING
+          ? beamY - level * BEAM_PITCH
+          : beamY + level * BEAM_PITCH
 
         const thickness = isUp ? BEAM_THICKNESS : -BEAM_THICKNESS
 
@@ -201,7 +229,7 @@ export function BeamedSlashGroup({
         <text
           className="beamed-slash-triplet-number"
           x={width / 2}
-          y={isUp ? beamY - (levels * BEAM_SPACING) - 4 : beamY + (levels * BEAM_SPACING) + 12}
+          y={isUp ? beamY - levels * BEAM_PITCH - 4 : beamY + levels * BEAM_PITCH + 12}
           textAnchor="middle"
           fontSize={10}
           fontWeight={600}
