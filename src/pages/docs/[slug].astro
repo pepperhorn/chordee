@@ -1,7 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro'
 import '../../styles/globals.css'
-import { getCollection } from 'astro:content'
+import { getCollection, render } from 'astro:content'
 
 export async function getStaticPaths() {
   const docs = await getCollection('docs')
@@ -12,7 +12,7 @@ export async function getStaticPaths() {
 }
 
 const { doc } = Astro.props
-const { Content } = await doc.render()
+const { Content } = await render(doc)
 ---
 
 <Layout title={`${doc.data.title} · Amiga x Shaun Docs`}>

@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "check": "astro check",
+    "check:docs": "npm run build && node --input-type=module -e \"const { readdir } = await import('node:fs/promises'); const entries = await readdir('dist/docs', { withFileTypes: true }); if (!entries.some((entry) => entry.isDirectory())) throw new Error('No documentation article routes were generated')\"",
     "preview": "astro preview",
     "astro": "astro"
   },
