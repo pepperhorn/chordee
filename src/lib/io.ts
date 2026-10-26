@@ -1,4 +1,5 @@
 import type { Beat, BeatSlot, ChordChart, Measure } from "./schema"
+import { formatNashville } from "./nashville"
 import { formatChord, formatTimeSignature } from "./utils"
 
 // ── File Operations ────────────────────────────────────────────────────
@@ -96,7 +97,7 @@ function slotChordText(slot: BeatSlot): string | null {
   if (slot.noChord) return "N.C."
   if (slot.chord) return formatChord(slot.chord)
   if (slot.nashvilleChord) {
-    return slot.nashvilleChord.degree + (slot.nashvilleChord.quality || "")
+    return formatNashville(slot.nashvilleChord)
   }
   return null
 }
