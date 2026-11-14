@@ -22,7 +22,17 @@ const { title } = Astro.props
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap"
+    />
+    {/* Preload the default SMuFL music font so barlines/clefs/time-sigs paint
+        immediately (no missing-glyph "tofu" boxes) on first render and on
+        orientation re-rasterization. */}
+    <link
+      rel="preload"
+      href="/fonts/Petaluma.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
     />
     <title>{title}</title>
   </head>

@@ -166,7 +166,7 @@ function BeatSlotGroupImpl({
                 y={slot.nashville.primary ? chordBaseline : chordBaseline + slot.nashville.y}
                 textAnchor="middle"
                 dominantBaseline="alphabetic"
-                fontFamily="Poppins, sans-serif"
+                fontFamily="'Josefin Sans', system-ui, sans-serif"
                 fontWeight={slot.nashville.primary ? 600 : 500}
                 fontSize={slot.nashville.primary ? 22 * chordScale : 14}
                 fill={slot.nashville.primary ? "#000" : "rgba(100, 116, 139, 0.85)"}

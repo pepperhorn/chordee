@@ -139,7 +139,7 @@ export function ChartContainer() {
         <span
           className="chart-brand-tag inline-flex items-center text-foreground leading-none"
           style={{
-            fontFamily: "PetalumaScript, serif",
+            fontFamily: "'Josefin Sans', Poppins, system-ui, sans-serif",
             fontSize: "14px",
             opacity: 0.6,
             textShadow: "0 0 6px rgba(255,255,255,0.7), 0 0 2px rgba(255,255,255,0.5)",

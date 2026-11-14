@@ -545,10 +545,16 @@ export function PropertiesPanel() {
 
                 {(
                   [
-                    ["chord", "Chord", "chordSize", "chordColor"],
-                    ["heading", "Heading", "headingSize", "headingColor"],
+                    // Header / metadata text
+                    ["heading", "Title", "headingSize", "headingColor"],
                     ["subtitle", "Subtitle", "subtitleSize", "subtitleColor"],
-                    ["body", "Body", "bodySize", "bodyColor"],
+                    ["composer", "Composer", "composerSize", "composerColor"],
+                    ["arranger", "Arranger", "arrangerSize", "arrangerColor"],
+                    ["style", "Style / Tempo", "styleSize", "styleColor"],
+                    ["copyright", "Copyright", "copyrightSize", "copyrightColor"],
+                    ["footer", "Footer", "footerSize", "footerColor"],
+                    // Chart body text + notation
+                    ["chord", "Chord", "chordSize", "chordColor"],
                     ["lyric", "Lyric", "lyricSize", "lyricColor"],
                     ["dynamic", "Dynamic", "dynamicSize", "dynamicColor"],
                     ["rehearsal", "Rehearsal / Section", "rehearsalSize", "rehearsalColor"],

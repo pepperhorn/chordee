@@ -1,0 +1,1229 @@
+{
+  "version": "1.0",
+  "meta": {
+    "id": "5f51adf2-7575-4e0b-a041-0893a43a96e1",
+    "title": "Animal",
+    "subtitle": "Katseye",
+    "composer": "",
+    "arranger": "",
+    "style": "think a straight version of All About That Bass",
+    "key": "C",
+    "tempo": 120,
+    "tempoDivisor": "quarter",
+    "tempoText": "",
+    "showTempo": true,
+    "notationDisplay": "chords",
+    "measuresPerLine": 4,
+    "clef": "treble",
+    "clefDisplay": "start",
+    "showClef": false,
+    "showKeySignature": true,
+    "copyright": "",
+    "footerText": ""
+  },
+  "sections": [
+    {
+      "id": "0wGY_saL",
+      "name": "Verse & Chorus",
+      "timeSignature": {
+        "beats": 4,
+        "beatUnit": 4
+      },
+      "showTimeSignature": "auto",
+      "measures": [
+        {
+          "id": "hCs6-uiS",
+          "barlineStart": "repeatStart",
+          "barlineEnd": "single",
+          "repeatStart": false,
+          "repeatEnd": false,
+          "repeatCount": 2,
+          "wholeRest": false,
+          "beats": [
+            {
+              "id": "kTurC-Dp",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "2v9Hi1W1",
+                  "chord": {
+                    "root": "C",
+                    "quality": "min"
+                  },
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "1wo6EFxS",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "m0AbdHR3",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "LcwbzrMT",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "nF6Lf3nJ",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "TfBonY4D",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "yR7M-Gvj",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            }
+          ],
+          "repeatRegionId": "rr-1hf6mij"
+        },
+        {
+          "id": "6BVnzGBy",
+          "barlineStart": "single",
+          "barlineEnd": "single",
+          "repeatStart": false,
+          "repeatEnd": false,
+          "repeatCount": 2,
+          "wholeRest": false,
+          "beats": [
+            {
+              "id": "YfafWufj",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "mKcwlJ-F",
+                  "chord": {
+                    "root": "F",
+                    "quality": "min"
+                  },
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "QCWy7iLv",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "4hN79yQp",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "6TVdczrY",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "Pj6bxhWH",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "QcHVjnva",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "MRQPHO4H",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "bPwJE0l9",
+          "barlineStart": "single",
+          "barlineEnd": "single",
+          "repeatStart": false,
+          "repeatEnd": false,
+          "repeatCount": 2,
+          "wholeRest": false,
+          "beats": [
+            {
+              "id": "4mxYNpyH",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "HqtEp4tp",
+                  "chord": {
+                    "root": "G",
+                    "quality": "dom7"
+                  },
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "ikjb0BCw",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "Sajcw_cv",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "SZOPZ61R",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "ev0rKQe_",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "0mnIhphj",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "j5rtBZ1i",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "z52dTgjR",
+          "barlineStart": "single",
+          "barlineEnd": "repeatEnd",
+          "repeatStart": false,
+          "repeatEnd": false,
+          "repeatCount": 2,
+          "wholeRest": false,
+          "beats": [
+            {
+              "id": "TXYd_cat",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "wYDRHH-a",
+                  "chord": {
+                    "root": "C",
+                    "quality": "min"
+                  },
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "Nfj47d0Z",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "fS80ZkwA",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "cjaobMjr",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "c6LfneKn",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "N7oqsBUz",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "7IupsJY-",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aeH2FQFL",
+      "name": "Bridge",
+      "timeSignature": {
+        "beats": 4,
+        "beatUnit": 4
+      },
+      "showTimeSignature": "auto",
+      "measures": [
+        {
+          "id": "lzzcrTvA",
+          "barlineStart": "single",
+          "barlineEnd": "single",
+          "repeatStart": false,
+          "repeatEnd": false,
+          "repeatCount": 2,
+          "wholeRest": false,
+          "beats": [
+            {
+              "id": "mVuPzfVg",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "FEwXywOy",
+                  "chord": {
+                    "root": "F",
+                    "quality": "min"
+                  },
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "irpmVo3m",
+              "division": "eighth",
+              "slots": [
+                {
+                  "id": "gYQfzTIm",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": true,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                },
+                {
+                  "id": "dUL-hg2E",
+                  "chord": {
+                    "root": "G",
+                    "quality": "min"
+                  },
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "KCHQUcAw",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "5QwL90r1",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": true,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "c1jhi5iu",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "EDgtOlrv",
+                  "chord": {
+                    "root": "Ab",
+                    "quality": "maj7"
+                  },
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": true,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "qxMZOPTD",
+          "barlineStart": "single",
+          "barlineEnd": "single",
+          "repeatStart": false,
+          "repeatEnd": false,
+          "repeatCount": 2,
+          "wholeRest": false,
+          "beats": [
+            {
+              "id": "v5G2zwEh",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "jxtr45-O",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "QFfsT-n-",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "lnTV6KQN",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "uhWm1xCr",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "rKLx2vDV",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "vK6SZXxp",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "_Mu1Ta9I",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "wQhfM9ie",
+          "barlineStart": "single",
+          "barlineEnd": "single",
+          "repeatStart": false,
+          "repeatEnd": false,
+          "repeatCount": 2,
+          "wholeRest": false,
+          "beats": [
+            {
+              "id": "YvGvbj6g",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "2fK4A56X",
+                  "chord": {
+                    "root": "C",
+                    "quality": "min"
+                  },
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "accent",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "Vj2IdLTW",
+              "division": "eighth",
+              "slots": [
+                {
+                  "id": "5Tv4TKdg",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": true,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                },
+                {
+                  "id": "vpQVAO36",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "accent",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "i29rrroU",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "wl4VzE_d",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": true,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "dJjbBZck",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "fxj_q5st",
+                  "chord": {
+                    "root": "Bb",
+                    "quality": "maj"
+                  },
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "accent",
+                    "tied": true,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "CCLW4LWG",
+          "barlineStart": "single",
+          "barlineEnd": "single",
+          "repeatStart": false,
+          "repeatEnd": false,
+          "repeatCount": 2,
+          "wholeRest": false,
+          "beats": [
+            {
+              "id": "oLPimQky",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "gEmiBUaN",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "xpT-bsGQ",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "h5vLwznh",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "cPnHQKrv",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "QVz6NLtf",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "d7fWwRrD",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "Zw8blHVn",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "RbtY-wcz",
+          "barlineStart": "single",
+          "barlineEnd": "single",
+          "repeatStart": false,
+          "repeatEnd": false,
+          "repeatCount": 2,
+          "wholeRest": false,
+          "beats": [
+            {
+              "id": "DmIshPyv",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "qCd3UkN1",
+                  "chord": {
+                    "root": "F",
+                    "quality": "min"
+                  },
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "sGfsQ8N4",
+              "division": "eighth",
+              "slots": [
+                {
+                  "id": "0FivITXl",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": true,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                },
+                {
+                  "id": "L8IHg5TB",
+                  "chord": {
+                    "root": "G",
+                    "quality": "min"
+                  },
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "baDPciJG",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "9pMfzhxF",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": true,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "7cG3ic9u",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "nnDRzRKu",
+                  "chord": {
+                    "root": "Ab",
+                    "quality": "maj7"
+                  },
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": true,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "tKF2lMNK",
+          "barlineStart": "single",
+          "barlineEnd": "single",
+          "repeatStart": false,
+          "repeatEnd": false,
+          "repeatCount": 2,
+          "wholeRest": false,
+          "beats": [
+            {
+              "id": "SGO705Mf",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "wgUP0NMn",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "feajAK5G",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "URab-l8-",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "_jBPxjYb",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "XLBdpvQU",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "vuYlqQSP",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "TcmX09uM",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "Q_FFAdVB",
+          "barlineStart": "single",
+          "barlineEnd": "single",
+          "repeatStart": false,
+          "repeatEnd": false,
+          "repeatCount": 2,
+          "wholeRest": false,
+          "beats": [
+            {
+              "id": "AkXFNfVh",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "QQkwOUgH",
+                  "chord": {
+                    "root": "G",
+                    "quality": "maj"
+                  },
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "jYrpoyRU",
+              "division": "eighth",
+              "slots": [
+                {
+                  "id": "mM-uqblU",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                },
+                {
+                  "id": "ILcx819x",
+                  "chord": {
+                    "root": "Ab",
+                    "quality": "maj",
+                    "bass": "G"
+                  },
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": true,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "_THvmHan",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "uo3rLytk",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "AYwgkdLs",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "PqgPN1eV",
+                  "chord": {
+                    "root": "G",
+                    "quality": "maj"
+                  },
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": true,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "TRUWtOx_",
+          "barlineStart": "single",
+          "barlineEnd": "single",
+          "repeatStart": false,
+          "repeatEnd": false,
+          "repeatCount": 2,
+          "wholeRest": false,
+          "beats": [
+            {
+              "id": "qhbDKhU9",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "TJvPBsUm",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "eyd6cjDe",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "xtGyKb45",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "teEwAL3X",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "RvC8_M9H",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "14Nt_FoF",
+              "division": "quarter",
+              "slots": [
+                {
+                  "id": "JhQiC1U5",
+                  "chord": null,
+                  "nashvilleChord": null,
+                  "noChord": false,
+                  "slash": {
+                    "articulation": "none",
+                    "tied": false,
+                    "rest": false,
+                    "stem": false,
+                    "stemDirection": "up"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "style": {
+    "schema": "chordee/user-style",
+    "version": 1,
+    "createdAt": "2026-08-26T03:08:26.116Z",
+    "layout": {
+      "measuresPerLineMode": "auto",
+      "measuresPerLine": 4,
+      "justification": "proportional"
+    },
+    "fonts": {
+      "globalScale": "md",
+      "heading": "PetalumaScript",
+      "headingSize": "lg",
+      "subtitle": "PetalumaScript",
+      "subtitleSize": "md",
+      "body": "Inter, system-ui, sans-serif",
+      "bodySize": "md",
+      "lyric": "Inter, system-ui, sans-serif",
+      "lyricSize": "md",
+      "dynamic": "PetalumaText",
+      "dynamicSize": "md",
+      "chord": "PetalumaScript",
+      "chordSize": "md",
+      "timeSignature": "PetalumaScript",
+      "timeSignatureSize": "md",
+      "rehearsal": "PetalumaScript",
+      "rehearsalSize": "xl",
+      "clef": "Petaluma",
+      "clefSize": "md",
+      "barline": "Petaluma",
+      "barlineSize": "md",
+      "lineSpacing": "md"
+    },
+    "page": {
+      "texture": "subtle",
+      "bgColor": "#ffffff"
+    }
+  }
+}

@@ -114,6 +114,10 @@ function PreviewPage({
   copyright,
   fontConfigOverride,
 }: PreviewPageProps) {
+  // Title font for the page 2+ title-repeat — mirror the configured Title
+  // font (fontConfig.heading), honoring any per-export override.
+  const storeTitleFont = useChartStore((s) => s.ui.fontConfig.heading)
+  const titleFont = fontConfigOverride.heading ?? storeTitleFont
   // Which chart-line indices show on this page
   const isFirstPage = page.pageNum === 1
   const firstLineInPage = layout.lines[page.startLine]
@@ -196,7 +200,7 @@ function PreviewPage({
                 right: 0,
                 top: 2 * previewScale,
                 fontSize: Math.max(8, 11 * previewScale),
-                fontFamily: "PetalumaScript, serif",
+                fontFamily: `${titleFont}, sans-serif`,
                 fontWeight: 700,
                 opacity: 0.75,
               }}
@@ -288,7 +292,8 @@ export function PdfExportDialog({ open, onOpenChange }: PdfExportDialogProps) {
   const baseDynamicSize = useChartStore((s) => s.ui.fontConfig.dynamicSize)
   const baseHeadingSize = useChartStore((s) => s.ui.fontConfig.headingSize)
   const baseSubtitleSize = useChartStore((s) => s.ui.fontConfig.subtitleSize)
-  const baseBodySize = useChartStore((s) => s.ui.fontConfig.bodySize)
+  // Info line (composer/arranger/style) drives the header-height estimate.
+  const baseComposerSize = useChartStore((s) => s.ui.fontConfig.composerSize)
 
   const [paperSize, setPaperSize] = useState<PaperSize>(() => detectDefaultPaper())
   const [orientation, setOrientation] = useState<Orientation>("portrait")
@@ -350,15 +355,15 @@ export function PdfExportDialog({ open, onOpenChange }: PdfExportDialogProps) {
     if (!meta.title) return 0
     const headingScale = RELATIVE_SIZE_SCALE[baseHeadingSize as RelativeSize] ?? 1
     const subtitleScale = RELATIVE_SIZE_SCALE[baseSubtitleSize as RelativeSize] ?? 1
-    const bodyScaleLocal = RELATIVE_SIZE_SCALE[baseBodySize as RelativeSize] ?? 1
+    const infoScale = RELATIVE_SIZE_SCALE[baseComposerSize as RelativeSize] ?? 1
     const titleFontSize = Math.round(24 * headingScale)
     const subtitleFontSize = Math.round(14 * subtitleScale)
-    const infoFontSize = Math.round(13 * bodyScaleLocal)
+    const infoFontSize = Math.round(13 * infoScale)
     const hasSubtitle = !!meta.subtitle
     return Math.round(
       40 + titleFontSize + (hasSubtitle ? subtitleFontSize + 4 : 0) + infoFontSize,
     )
-  }, [meta.title, meta.subtitle, baseHeadingSize, baseSubtitleSize, baseBodySize])
+  }, [meta.title, meta.subtitle, baseHeadingSize, baseSubtitleSize, baseComposerSize])
 
   const geometry = useMemo(
     () =>

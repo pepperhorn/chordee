@@ -37,7 +37,7 @@
   --color-brand: hsl(var(--brand));
   --color-brand-foreground: hsl(var(--brand-foreground));
 
-  --font-sans: "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Josefin Sans", "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
@@ -164,6 +164,19 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
   }
+
+  /* Text selection + native form-control accent — soft brand red instead of
+     the browser-default blue (matches the monochrome + red identity). This is
+     visible when a chord/dynamic input auto-selects its text on focus. */
+  ::selection {
+    background-color: #de7e7e;
+    color: #1a1a1a;
+  }
+
+  :root {
+    accent-color: #de7e7e;
+    caret-color: #de7e7e;
+  }
 }
 
 /* ── Font faces ─────────────────────────────────────────────────────── */
@@ -171,7 +184,10 @@
 @font-face {
   font-family: "Petaluma";
   src: url("/fonts/Petaluma.woff2") format("woff2");
-  font-display: swap;
+  /* SMuFL glyph font: use "block", not "swap" — the serif fallback has no
+     glyph for barline/clef/time-sig codepoints, so "swap" flashes tofu boxes
+     during any fallback window (e.g. the re-rasterize on orientation change). */
+  font-display: block;
 }
 
 @font-face {
@@ -189,7 +205,8 @@
 @font-face {
   font-family: "Bravura";
   src: url("/fonts/Bravura.woff2") format("woff2");
-  font-display: swap;
+  /* SMuFL glyph font — see Petaluma above: "block" avoids tofu-box flashes. */
+  font-display: block;
 }
 
 @font-face {

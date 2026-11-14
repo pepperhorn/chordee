@@ -70,12 +70,16 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
   }
 
   const globalMul = RELATIVE_SIZE_SCALE[fc.globalScale] ?? 1
-  const headingScale = (RELATIVE_SIZE_SCALE[fc.headingSize] ?? 1) * globalMul
-  const subtitleScale = (RELATIVE_SIZE_SCALE[fc.subtitleSize] ?? 1) * globalMul
-  const bodyScale = (RELATIVE_SIZE_SCALE[fc.bodySize] ?? 1) * globalMul
-  const titleFontSize = Math.round(24 * headingScale)
-  const subtitleFontSize = Math.round(14 * subtitleScale)
-  const infoFontSize = Math.round(13 * bodyScale)
+  const scaleOf = (size: typeof fc.bodySize) =>
+    (RELATIVE_SIZE_SCALE[size] ?? 1) * globalMul
+  const titleFontSize = Math.round(24 * scaleOf(fc.headingSize))
+  const subtitleFontSize = Math.round(14 * scaleOf(fc.subtitleSize))
+  const composerFontSize = Math.round(13 * scaleOf(fc.composerSize))
+  const arrangerFontSize = Math.round(13 * scaleOf(fc.arrangerSize))
+  const styleFontSize = Math.round(13 * scaleOf(fc.styleSize))
+  // The composer/arranger and tempo/style lines share one baseline; reserve
+  // header space for the tallest of them.
+  const infoFontSize = Math.max(composerFontSize, arrangerFontSize, styleFontSize)
 
   const TEMPO_GLYPHS: Record<string, string> = {
     whole: "\uD834\uDD5D",
@@ -98,7 +102,8 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
 
   // Chart-level copyright + footer-text rendered 20px below the last line of music.
   const COPYRIGHT_OFFSET = 20
-  const copyrightFontSize = Math.max(10, Math.round(11 * bodyScale))
+  const copyrightFontSize = Math.max(10, Math.round(11 * scaleOf(fc.copyrightSize)))
+  const footerFontSize = Math.max(10, Math.round(11 * scaleOf(fc.footerSize)))
   const footerLineGap = 3
   const hasCopyright = !!meta.copyright?.trim()
   const hasFooterText = !!meta.footerText?.trim()
@@ -106,8 +111,9 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
   const copyrightBlockH =
     footerLineCount > 0
       ? COPYRIGHT_OFFSET +
-        footerLineCount * copyrightFontSize +
-        (footerLineCount - 1) * footerLineGap +
+        (hasCopyright ? copyrightFontSize : 0) +
+        (hasFooterText ? footerFontSize : 0) +
+        (footerLineCount > 1 ? footerLineGap : 0) +
         8
       : 0
   const totalH = layout.totalHeight + headerH + copyrightBlockH
@@ -143,7 +149,7 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
             textAnchor="middle"
             fontSize={titleFontSize}
             fontWeight={700}
-            fontFamily={`${fc.heading}, serif`}
+            fontFamily={`${fc.heading}, sans-serif`}
             fill={fc.headingColor ?? "currentColor"}
             style={{ cursor: "pointer" }}
             onClick={(e) => {
@@ -162,7 +168,8 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
               y={titleFontSize + subtitleFontSize + 14}
               textAnchor="middle"
               fontSize={subtitleFontSize}
-              fontFamily={`${fc.subtitle}, serif`}
+              fontWeight={600}
+              fontFamily={`${fc.subtitle}, sans-serif`}
               fill={fc.subtitleColor ?? "currentColor"}
               opacity={0.6}
               style={{ cursor: "pointer" }}
@@ -175,24 +182,54 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
             </text>
           )}
 
-          {/* Composer / Arranger — right aligned */}
+          {/* Composer / Arranger — right aligned. Composer and arranger each
+              carry their own font, weight and color, so they render as
+              independent tspans on a shared baseline. */}
           {(meta.composer || meta.arranger) && (
             <text
               className="chart-composer"
               x={containerWidth - 40}
               y={titleFontSize + (hasSubtitle ? subtitleFontSize + 4 : 0) + infoFontSize + 14}
               textAnchor="end"
-              fontSize={infoFontSize}
-              fontFamily={`${fc.body}, sans-serif`}
-              fill={fc.bodyColor ?? "currentColor"}
               opacity={0.6}
-              style={{ cursor: "pointer" }}
-              onClick={(e) => {
-                e.stopPropagation()
-                setFocusField("composer")
-              }}
             >
-              {[meta.composer, meta.arranger && `arr. ${meta.arranger}`].filter(Boolean).join(" — ")}
+              {meta.composer && (
+                <tspan
+                  className="chart-composer-name"
+                  fontSize={composerFontSize}
+                  fontWeight={600}
+                  fontFamily={`${fc.composer}, sans-serif`}
+                  fill={fc.composerColor ?? "currentColor"}
+                  style={{ cursor: "pointer" }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setFocusField("composer")
+                  }}
+                >
+                  {meta.composer}
+                </tspan>
+              )}
+              {meta.composer && meta.arranger && (
+                <tspan fontSize={infoFontSize} fontFamily={`${fc.composer}, sans-serif`}>
+                  {" — "}
+                </tspan>
+              )}
+              {meta.arranger && (
+                <tspan
+                  className="chart-arranger"
+                  fontSize={arrangerFontSize}
+                  fontWeight={500}
+                  fontFamily={`${fc.arranger}, sans-serif`}
+                  fill={fc.arrangerColor ?? "currentColor"}
+                  style={{ cursor: "pointer" }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setFocusField("arranger")
+                  }}
+                >
+                  {`arr. ${meta.arranger}`}
+                </tspan>
+              )}
             </text>
           )}
 
@@ -203,9 +240,10 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
               x={40}
               y={titleFontSize + (hasSubtitle ? subtitleFontSize + 4 : 0) + infoFontSize + 14}
               textAnchor="start"
-              fontSize={infoFontSize}
-              fontFamily={`${fc.body}, sans-serif`}
-              fill={fc.bodyColor ?? "currentColor"}
+              fontSize={styleFontSize}
+              fontWeight={500}
+              fontFamily={`${fc.style}, sans-serif`}
+              fill={fc.styleColor ?? "currentColor"}
               opacity={0.6}
               style={{ cursor: "pointer" }}
               onClick={(e) => {
@@ -302,8 +340,9 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
           y={headerH + layout.totalHeight + COPYRIGHT_OFFSET + copyrightFontSize}
           textAnchor="middle"
           fontSize={copyrightFontSize}
-          fontFamily={`${fc.body}, sans-serif`}
-          fill={fc.bodyColor ?? "currentColor"}
+          fontWeight={400}
+          fontFamily={`${fc.copyright}, sans-serif`}
+          fill={fc.copyrightColor ?? "currentColor"}
           opacity={0.55}
           style={{ cursor: "pointer" }}
           onClick={(e) => {
@@ -322,12 +361,13 @@ export function ChartSVG({ layout, containerWidth, fontConfigOverride }: ChartSV
             headerH +
             layout.totalHeight +
             COPYRIGHT_OFFSET +
-            (hasCopyright ? copyrightFontSize + footerLineGap + copyrightFontSize : copyrightFontSize)
+            (hasCopyright ? copyrightFontSize + footerLineGap + footerFontSize : footerFontSize)
           }
           textAnchor="middle"
-          fontSize={copyrightFontSize}
-          fontFamily={`${fc.body}, sans-serif`}
-          fill={fc.bodyColor ?? "currentColor"}
+          fontSize={footerFontSize}
+          fontWeight={400}
+          fontFamily={`${fc.footer}, sans-serif`}
+          fill={fc.footerColor ?? "currentColor"}
           opacity={0.55}
           fontStyle="italic"
           style={{ cursor: "pointer" }}

@@ -67,13 +67,19 @@ Always use `--host 0.0.0.0` when starting dev servers:
 npm run dev -- --host 0.0.0.0
 ```
 
+## Typography
+
+- **UI / metadata default**: **Josefin Sans**, with **Poppins** as the fallback (this overrides the global "Poppins primary" instruction for this project). Both are loaded via Google Fonts in `src/layouts/Layout.astro`; the stack lives in `--font-sans` (`src/styles/globals.css`) and in `META_SANS` (`src/lib/fonts.ts`).
+- Per-element header/footer fonts (Title, Subtitle, Composer, Arranger, Style/Tempo, Footer) default to Josefin Sans; **Copyright** defaults to **Inter** (`META_INTER`). Each is independently overridable in the Layout panel (`PropertiesPanel.tsx` font groups → `setFontConfig`).
+- Music notation (clef, barline, time-sig) stays on the SMuFL fonts below — never set those to a text font.
+
 ## Music Fonts
 
 - **Default**: Petaluma SMuFL (handwritten/Real Book style) — SIL OFL, from [steinbergmedia/petaluma](https://github.com/steinbergmedia/petaluma)
 - **Alternative**: Bravura SMuFL (classical engraving) — SIL OFL, from [steinbergmedia/bravura](https://github.com/steinbergmedia/bravura)
 - **Additional**: Finale Maestro, Finale Jazz (SMuFL), Finale Broadway (SMuFL) — SIL OFL versions from MakeMusic
 - **NOT usable**: Finale legacy fonts (Broadway Copyist TTFs, Jazz TTFs in repo) — proprietary, cannot serve on web
-- Users can configure fonts per element: heading, subtitle, body, lyric, dynamic, chord
+- Users can configure fonts per element: title (heading), subtitle, composer, arranger, style, copyright, footer, chord, lyric, dynamic, rehearsal/section, time signature, clef, barlines
 
 ## Pretext API Notes
 

@@ -16,16 +16,42 @@ export const RELATIVE_SIZES: { value: RelativeSize; label: string }[] = [
   { value: "2xl", label: "2X-Large" },
 ]
 
+/** Default sans for chart metadata text — Josefin Sans with Poppins as the
+ *  fallback (both loaded in Layout.astro). See CLAUDE.md typography note. */
+export const META_SANS = "'Josefin Sans', Poppins, system-ui, sans-serif"
+/** Inter stack — kept as the default for fine-print copyright. */
+export const META_INTER = "Inter, system-ui, sans-serif"
+
 export interface FontConfig {
   /** Master scale applied on top of every per-font size below.
    *  Lets users bump everything up/down without re-tweaking each field. */
   globalScale: RelativeSize
+  /** Chart title (the "Title" control in the Layout panel). */
   heading: string
   headingSize: RelativeSize
   headingColor?: string
   subtitle: string
   subtitleSize: RelativeSize
   subtitleColor?: string
+  // ── Header credits / footer — each independently overridable ──────────
+  composer: string
+  composerSize: RelativeSize
+  composerColor?: string
+  arranger: string
+  arrangerSize: RelativeSize
+  arrangerColor?: string
+  style: string
+  styleSize: RelativeSize
+  styleColor?: string
+  copyright: string
+  copyrightSize: RelativeSize
+  copyrightColor?: string
+  footer: string
+  footerSize: RelativeSize
+  footerColor?: string
+  /** Legacy shared "body" slot — no longer surfaced in the Layout panel
+   *  (split into composer/arranger/style/copyright/footer above). Retained
+   *  for back-compat with saved styles and PDF-export height estimates. */
   body: string
   bodySize: RelativeSize
   bodyColor?: string
@@ -55,11 +81,21 @@ export interface FontConfig {
 
 export const DEFAULT_FONT_CONFIG: FontConfig = {
   globalScale: "md",
-  heading: "PetalumaScript",
+  heading: META_SANS,
   headingSize: "lg",
-  subtitle: "PetalumaScript",
+  subtitle: META_SANS,
   subtitleSize: "md",
-  body: "Inter, system-ui, sans-serif",
+  composer: META_SANS,
+  composerSize: "md",
+  arranger: META_SANS,
+  arrangerSize: "md",
+  style: META_SANS,
+  styleSize: "md",
+  copyright: META_INTER,
+  copyrightSize: "md",
+  footer: META_SANS,
+  footerSize: "md",
+  body: META_INTER,
   bodySize: "md",
   lyric: "Inter, system-ui, sans-serif",
   lyricSize: "md",
@@ -79,6 +115,8 @@ export const DEFAULT_FONT_CONFIG: FontConfig = {
 }
 
 export const FONT_FAMILIES = [
+  { value: META_SANS, label: "Josefin Sans", notation: false },
+  { value: "Poppins, system-ui, sans-serif", label: "Poppins", notation: false },
   { value: "PetalumaScript", label: "Petaluma Script (Handwritten)", notation: false },
   { value: "Petaluma", label: "Petaluma (Notation)", notation: true },
   { value: "PetalumaText", label: "Petaluma Text", notation: false },

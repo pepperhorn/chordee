@@ -28,7 +28,7 @@ export function PdfIcon({ className, ...rest }: SVGProps<SVGSVGElement>) {
         x="12"
         y="16.5"
         textAnchor="middle"
-        fontFamily="Poppins, system-ui, sans-serif"
+        fontFamily="'Josefin Sans', system-ui, sans-serif"
         fontSize="6"
         fontWeight={700}
         fill="currentColor"

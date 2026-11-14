@@ -2,6 +2,8 @@ import { z } from "zod"
 import {
   DEFAULT_FONT_CONFIG,
   FONT_FAMILIES,
+  META_INTER,
+  META_SANS,
   type FontConfig,
   type RelativeSize,
 } from "./fonts"
@@ -31,6 +33,23 @@ export const UserStyleFontConfigSchema = z.object({
   subtitle: FontFamilyField,
   subtitleSize: RELATIVE_SIZE_ENUM,
   subtitleColor: HexColor,
+  // Header credits / footer — added later, so each carries a default to keep
+  // older saved styles (which lack these keys) valid on parse.
+  composer: FontFamilyField.default(META_SANS),
+  composerSize: RELATIVE_SIZE_ENUM.default("md"),
+  composerColor: HexColor,
+  arranger: FontFamilyField.default(META_SANS),
+  arrangerSize: RELATIVE_SIZE_ENUM.default("md"),
+  arrangerColor: HexColor,
+  style: FontFamilyField.default(META_SANS),
+  styleSize: RELATIVE_SIZE_ENUM.default("md"),
+  styleColor: HexColor,
+  copyright: FontFamilyField.default(META_INTER),
+  copyrightSize: RELATIVE_SIZE_ENUM.default("md"),
+  copyrightColor: HexColor,
+  footer: FontFamilyField.default(META_SANS),
+  footerSize: RELATIVE_SIZE_ENUM.default("md"),
+  footerColor: HexColor,
   body: FontFamilyField,
   bodySize: RELATIVE_SIZE_ENUM,
   bodyColor: HexColor,
